@@ -12,15 +12,23 @@ router = APIRouter(prefix="/api-keys", tags=["api-keys"])
 
 
 @router.get("", response_model=list[ApiKeyOut])
-async def list_api_keys(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_api_keys(
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(
-        select(ApiKey).where(ApiKey.user_id == user.id).order_by(ApiKey.created_at.desc())
+        select(ApiKey)
+        .where(ApiKey.user_id == user.id)
+        .order_by(ApiKey.created_at.desc())
     )
     return result.scalars().all()
 
 
 @router.post("", response_model=ApiKeyOut, status_code=201)
-async def create_api_key(req: ApiKeyCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def create_api_key(
+    req: ApiKeyCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(ApiKey).where(ApiKey.user_id == user.id))
     if len(result.scalars().all()) >= 10:
         raise HTTPException(status_code=400, detail="Maximum 10 API keys per account")
@@ -32,8 +40,14 @@ async def create_api_key(req: ApiKeyCreate, user: User = Depends(get_current_use
 
 
 @router.delete("/{key_id}", status_code=204)
-async def delete_api_key(key_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id))
+async def delete_api_key(
+    key_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id)
+    )
     api_key = result.scalar_one_or_none()
     if not api_key:
         raise HTTPException(status_code=404, detail="API key not found")

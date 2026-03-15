@@ -23,14 +23,18 @@ class Ticket(Base):
     __tablename__ = "tickets"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    api_key_id: Mapped[int] = mapped_column(ForeignKey("api_keys.id", ondelete="CASCADE"))
+    api_key_id: Mapped[int] = mapped_column(
+        ForeignKey("api_keys.id", ondelete="CASCADE")
+    )
     title: Mapped[str] = mapped_column(String(500))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default=TicketStatus.TODO)
     priority: Mapped[str] = mapped_column(String(20), default=TicketPriority.MEDIUM)
     order: Mapped[int] = mapped_column(Integer, default=0)
     external_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),
@@ -38,4 +42,9 @@ class Ticket(Base):
     )
 
     api_key = relationship("ApiKey", back_populates="tickets")
-    comments = relationship("Comment", back_populates="ticket", cascade="all, delete-orphan", order_by="Comment.created_at")
+    comments = relationship(
+        "Comment",
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+        order_by="Comment.created_at",
+    )

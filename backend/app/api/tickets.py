@@ -9,14 +9,22 @@ from app.models.user import User
 from app.models.api_key import ApiKey
 from app.models.ticket import Ticket
 from app.models.comment import Comment
-from app.schemas.ticket import TicketCreate, TicketUpdate, TicketMove, TicketOut, TicketBrief
+from app.schemas.ticket import (
+    TicketCreate,
+    TicketUpdate,
+    TicketMove,
+    TicketOut,
+    TicketBrief,
+)
 from app.schemas.comment import CommentCreate
 
 router = APIRouter(tags=["tickets"])
 
 
 async def _get_user_api_key(ak_id: int, user: User, db: AsyncSession) -> ApiKey:
-    result = await db.execute(select(ApiKey).where(ApiKey.id == ak_id, ApiKey.user_id == user.id))
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.id == ak_id, ApiKey.user_id == user.id)
+    )
     api_key = result.scalar_one_or_none()
     if not api_key:
         raise HTTPException(status_code=404, detail="API key not found")
@@ -37,7 +45,11 @@ async def _get_user_ticket(ticket_id: int, user: User, db: AsyncSession) -> Tick
 
 
 @router.get("/api-keys/{ak_id}/tickets", response_model=list[TicketBrief])
-async def list_tickets(ak_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def list_tickets(
+    ak_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     await _get_user_api_key(ak_id, user, db)
     result = await db.execute(
         select(Ticket).where(Ticket.api_key_id == ak_id).order_by(Ticket.order)
@@ -47,7 +59,10 @@ async def list_tickets(ak_id: int, user: User = Depends(get_current_user), db: A
 
 @router.post("/api-keys/{ak_id}/tickets", response_model=TicketOut, status_code=201)
 async def create_ticket(
-    ak_id: int, req: TicketCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    ak_id: int,
+    req: TicketCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     await _get_user_api_key(ak_id, user, db)
     max_order = await db.execute(
@@ -71,13 +86,20 @@ async def create_ticket(
 
 
 @router.get("/tickets/{ticket_id}", response_model=TicketOut)
-async def get_ticket(ticket_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def get_ticket(
+    ticket_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     return await _get_user_ticket(ticket_id, user, db)
 
 
 @router.put("/tickets/{ticket_id}", response_model=TicketOut)
 async def update_ticket(
-    ticket_id: int, req: TicketUpdate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    ticket_id: int,
+    req: TicketUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     ticket = await _get_user_ticket(ticket_id, user, db)
     for field, value in req.model_dump(exclude_unset=True).items():
@@ -89,7 +111,10 @@ async def update_ticket(
 
 @router.patch("/tickets/{ticket_id}/move", response_model=TicketOut)
 async def move_ticket(
-    ticket_id: int, req: TicketMove, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    ticket_id: int,
+    req: TicketMove,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     ticket = await _get_user_ticket(ticket_id, user, db)
     old_status = ticket.status
@@ -119,14 +144,21 @@ async def move_ticket(
 
 
 @router.delete("/tickets/{ticket_id}", status_code=204)
-async def delete_ticket(ticket_id: int, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+async def delete_ticket(
+    ticket_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     ticket = await _get_user_ticket(ticket_id, user, db)
     await db.delete(ticket)
 
 
 @router.post("/tickets/{ticket_id}/comments", response_model=TicketOut)
 async def add_comment(
-    ticket_id: int, req: CommentCreate, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    ticket_id: int,
+    req: CommentCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     ticket = await _get_user_ticket(ticket_id, user, db)
     comment = Comment(

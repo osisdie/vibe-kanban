@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,7 +6,12 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.security import hash_password, verify_password, create_access_token, get_current_user
+from app.core.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    get_current_user,
+)
 from app.models.user import User
 from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserOut
 
@@ -33,7 +38,11 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == req.email))
     user = result.scalar_one_or_none()
-    if not user or not user.hashed_password or not verify_password(req.password, user.hashed_password):
+    if (
+        not user
+        or not user.hashed_password
+        or not verify_password(req.password, user.hashed_password)
+    ):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return TokenResponse(access_token=create_access_token(user.id))
 
@@ -53,7 +62,9 @@ async def google_login():
         redirect_uri=settings.GOOGLE_REDIRECT_URI,
         scope="openid email profile",
     )
-    uri, _ = client.create_authorization_url("https://accounts.google.com/o/oauth2/v2/auth")
+    uri, _ = client.create_authorization_url(
+        "https://accounts.google.com/o/oauth2/v2/auth"
+    )
     return RedirectResponse(uri)
 
 
@@ -66,7 +77,7 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         client_secret=settings.GOOGLE_CLIENT_SECRET,
         redirect_uri=settings.GOOGLE_REDIRECT_URI,
     )
-    token = await client.fetch_token(
+    await client.fetch_token(
         "https://oauth2.googleapis.com/token",
         code=code,
         grant_type="authorization_code",

@@ -1,4 +1,5 @@
 """External Agent API — authenticated via X-API-Key header."""
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +10,13 @@ from app.core.security import get_api_key, increment_usage
 from app.models.api_key import ApiKey
 from app.models.ticket import Ticket
 from app.models.comment import Comment
-from app.schemas.ticket import TicketCreate, TicketUpdate, TicketMove, TicketOut, TicketBrief
+from app.schemas.ticket import (
+    TicketCreate,
+    TicketUpdate,
+    TicketMove,
+    TicketOut,
+    TicketBrief,
+)
 from app.schemas.comment import CommentCreate
 
 router = APIRouter(prefix="/external", tags=["external"])
@@ -28,7 +35,9 @@ async def _get_ticket(ticket_id: int, api_key: ApiKey, db: AsyncSession) -> Tick
 
 
 @router.get("/tickets", response_model=list[TicketBrief])
-async def list_tickets(api_key: ApiKey = Depends(get_api_key), db: AsyncSession = Depends(get_db)):
+async def list_tickets(
+    api_key: ApiKey = Depends(get_api_key), db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(
         select(Ticket).where(Ticket.api_key_id == api_key.id).order_by(Ticket.order)
     )
@@ -36,7 +45,11 @@ async def list_tickets(api_key: ApiKey = Depends(get_api_key), db: AsyncSession 
 
 
 @router.post("/tickets", response_model=TicketOut, status_code=201)
-async def create_ticket(req: TicketCreate, api_key: ApiKey = Depends(get_api_key), db: AsyncSession = Depends(get_db)):
+async def create_ticket(
+    req: TicketCreate,
+    api_key: ApiKey = Depends(get_api_key),
+    db: AsyncSession = Depends(get_db),
+):
     await increment_usage(api_key, db)
     max_order = await db.execute(
         select(func.coalesce(func.max(Ticket.order), -1)).where(
@@ -59,13 +72,20 @@ async def create_ticket(req: TicketCreate, api_key: ApiKey = Depends(get_api_key
 
 
 @router.get("/tickets/{ticket_id}", response_model=TicketOut)
-async def get_ticket(ticket_id: int, api_key: ApiKey = Depends(get_api_key), db: AsyncSession = Depends(get_db)):
+async def get_ticket(
+    ticket_id: int,
+    api_key: ApiKey = Depends(get_api_key),
+    db: AsyncSession = Depends(get_db),
+):
     return await _get_ticket(ticket_id, api_key, db)
 
 
 @router.put("/tickets/{ticket_id}", response_model=TicketOut)
 async def update_ticket(
-    ticket_id: int, req: TicketUpdate, api_key: ApiKey = Depends(get_api_key), db: AsyncSession = Depends(get_db)
+    ticket_id: int,
+    req: TicketUpdate,
+    api_key: ApiKey = Depends(get_api_key),
+    db: AsyncSession = Depends(get_db),
 ):
     await increment_usage(api_key, db)
     ticket = await _get_ticket(ticket_id, api_key, db)
@@ -78,7 +98,10 @@ async def update_ticket(
 
 @router.patch("/tickets/{ticket_id}/move", response_model=TicketOut)
 async def move_ticket(
-    ticket_id: int, req: TicketMove, api_key: ApiKey = Depends(get_api_key), db: AsyncSession = Depends(get_db)
+    ticket_id: int,
+    req: TicketMove,
+    api_key: ApiKey = Depends(get_api_key),
+    db: AsyncSession = Depends(get_db),
 ):
     await increment_usage(api_key, db)
     ticket = await _get_ticket(ticket_id, api_key, db)
@@ -110,7 +133,10 @@ async def move_ticket(
 
 @router.post("/tickets/{ticket_id}/comments", response_model=TicketOut)
 async def add_comment(
-    ticket_id: int, req: CommentCreate, api_key: ApiKey = Depends(get_api_key), db: AsyncSession = Depends(get_db)
+    ticket_id: int,
+    req: CommentCreate,
+    api_key: ApiKey = Depends(get_api_key),
+    db: AsyncSession = Depends(get_db),
 ):
     await increment_usage(api_key, db)
     ticket = await _get_ticket(ticket_id, api_key, db)

@@ -28,7 +28,9 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(user_id: int, expires_delta: Optional[timedelta] = None) -> str:
-    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=settings.JWT_EXPIRE_MINUTES))
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
+    )
     return jwt.encode(
         {"sub": str(user_id), "exp": expire},
         settings.JWT_SECRET_KEY,
@@ -41,15 +43,25 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     if not credentials:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
+        )
     try:
-        payload = jwt.decode(credentials.credentials, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(
+            credentials.credentials,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
         user_id = int(payload["sub"])
     except (JWTError, KeyError, ValueError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        )
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        )
     return user
 
 
@@ -58,16 +70,25 @@ async def get_api_key(
     db: AsyncSession = Depends(get_db),
 ) -> ApiKey:
     if not api_key:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="X-API-Key header required")
-    result = await db.execute(select(ApiKey).where(ApiKey.key == api_key, ApiKey.is_active == True))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="X-API-Key header required"
+        )
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.key == api_key, ApiKey.is_active.is_(True))
+    )
     key_obj = result.scalar_one_or_none()
     if not key_obj:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
+        )
     return key_obj
 
 
 async def increment_usage(api_key: ApiKey, db: AsyncSession):
     if api_key.usage_count >= 1000:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="API key quota exceeded (1000 actions)")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="API key quota exceeded (1000 actions)",
+        )
     api_key.usage_count += 1
     db.add(api_key)
