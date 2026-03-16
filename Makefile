@@ -1,4 +1,4 @@
-.PHONY: dev-backend dev-frontend install setup
+.PHONY: dev-backend dev-frontend install setup docker docker-up docker-down
 
 install:
 	cd backend && pip install -r requirements.txt
@@ -17,3 +17,12 @@ dev:
 	@echo "Run in separate terminals:"
 	@echo "  make dev-backend"
 	@echo "  make dev-frontend"
+
+docker:
+	docker build -t vibe-kanban .
+
+docker-up:
+	docker compose up --build -d
+
+docker-down:
+	docker compose down

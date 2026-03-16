@@ -1,0 +1,35 @@
+# Stage 1: Build frontend
+FROM node:22-alpine AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: Python backend + serve frontend static files
+FROM python:3.12-slim AS runtime
+WORKDIR /app
+
+# Install dependencies
+COPY backend/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
+
+# Copy backend source
+COPY backend/ ./backend/
+
+# Copy frontend build output
+COPY --from=frontend-build /app/frontend/dist ./frontend/dist
+
+# Copy .env.example as fallback (real .env provided at runtime)
+COPY .env.example ./.env.example
+
+ENV PYTHONUNBUFFERED=1
+EXPOSE 8004
+
+# Run from backend/ so relative DB path works
+WORKDIR /app/backend
+CMD ["gunicorn", "app.main:app", \
+     "-k", "uvicorn.workers.UvicornWorker", \
+     "-w", "4", \
+     "-b", "0.0.0.0:8004", \
+     "--access-logfile", "-"]

@@ -40,15 +40,130 @@ Timestamped comment thread with both human and agent entries. Status changes aut
 - **Audit Trail** — Every status transition auto-generates a timestamped comment
 - **Comments** — Both humans and agents can leave comments on tickets
 - **Quota Management** — Track API usage per project (GET requests are free)
+- **Docker Ready** — Single-container deployment with multi-stage build
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph Clients
+        WebUI["Web UI<br/>(React + Vite)"]
+        Agent["AI Agent<br/>(any HTTP client)"]
+    end
+
+    subgraph Backend["FastAPI Backend :8004"]
+        Auth["Auth API<br/>/auth/*"]
+        WebAPI["Web Ticket API<br/>/api-keys/*/tickets"]
+        ExtAPI["External Agent API<br/>/external/*"]
+        Health["Health Check<br/>/health"]
+    end
+
+    subgraph Data
+        DB[(SQLite / PostgreSQL)]
+    end
+
+    WebUI -->|JWT Bearer| Auth
+    WebUI -->|JWT Bearer| WebAPI
+    Agent -->|X-API-Key| ExtAPI
+    WebAPI --> DB
+    ExtAPI --> DB
+    Auth --> DB
+```
+
+### Data Model
+
+```mermaid
+erDiagram
+    User ||--o{ ApiKey : "has (max 10)"
+    ApiKey ||--o{ Ticket : contains
+    Ticket ||--o{ Comment : has
+
+    User {
+        int id PK
+        string email UK
+        string hashed_password
+        string display_name
+        string google_id
+        datetime created_at
+    }
+
+    ApiKey {
+        int id PK
+        int user_id FK
+        string name
+        string key UK "64-char hex"
+        int usage_count
+        bool is_active
+    }
+
+    Ticket {
+        int id PK
+        int api_key_id FK
+        string title
+        string description
+        enum status "todo|doing|pending_confirming|testing|done"
+        enum priority "low|medium|high"
+        int order
+        string external_ref
+    }
+
+    Comment {
+        int id PK
+        int ticket_id FK
+        string author
+        string content
+        bool is_status_change
+    }
+```
+
+### Project Structure
+
+```
+backend/
+  app/
+    core/        # config, database, security (JWT + API key auth)
+    models/      # User, ApiKey, Ticket, Comment (SQLAlchemy async)
+    schemas/     # Pydantic request/response models
+    api/
+      auth.py       # register, login, Google OAuth
+      api_keys.py   # CRUD for projects (max 10 per account)
+      tickets.py    # CRUD + move (JWT auth, web UI)
+      external.py   # Agent API (X-API-Key auth, quota-enforced)
+
+frontend/
+  src/
+    components/  # KanbanBoard, KanbanColumn, TicketCard, TicketModal
+    contexts/    # AuthContext (JWT state management)
+    pages/       # Login, Register, Settings, Board
+    api/         # Axios client with auth interceptor
+
+e2e/
+  test_e2e.py              # API-level E2E tests (2 scenarios)
+  playwright_e2e_steps.md  # Playwright MCP browser test guide
+```
 
 ## Quick Start
 
-### Prerequisites
+### Option A: Docker (recommended)
 
-- Python 3.10+
-- Node.js 18+
+```bash
+git clone https://github.com/osisdie/vibe-kanban.git
+cd vibe-kanban
 
-### Setup
+# Create .env
+cp .env.example .env
+# IMPORTANT: Change JWT_SECRET_KEY to a random value
+#   openssl rand -hex 32
+
+# Build and run
+docker compose up --build
+```
+
+Open **http://localhost:8004** — both API and UI are served from a single container.
+
+### Option B: Local development
+
+**Prerequisites:** Python 3.10+, Node.js 18+
 
 ```bash
 git clone https://github.com/osisdie/vibe-kanban.git
@@ -66,8 +181,6 @@ pip install -r backend/requirements.txt
 cd frontend && npm install && cd ..
 ```
 
-### Run
-
 ```bash
 # Terminal 1 — Backend (auto-creates SQLite DB on first run)
 source .venv/bin/activate
@@ -82,14 +195,6 @@ Open **http://localhost:5177**
 > Ports `8004` / `5177` are chosen to avoid conflicts with common dev servers. Change them in `.env`, `vite.config.ts`, and `Makefile` if needed.
 
 ## How It Works (Vibe Coding Workflow)
-
-```
-┌─────────────┐     REST API      ┌──────────────┐     Web UI      ┌──────────┐
-│  AI Agent   │ ──────────────▶   │  vibe-kanban │ ◀────────────── │  Human   │
-│ (Claude,    │   X-API-Key       │   Backend    │   JWT Bearer    │  (You)   │
-│  GPT, etc.) │ ◀──────────────   │              │ ──────────────▶ │          │
-└─────────────┘                   └──────────────┘                 └──────────┘
-```
 
 1. **Create a project** in the web UI → copy the API key
 2. **Agent syncs TODO list** at session start:
@@ -167,31 +272,63 @@ curl http://localhost:8004/api/v1/external/usage \
 | `testing` | Implementation complete, under test |
 | `done` | Finished |
 
-## Architecture
+## Deployment
 
+### Docker (production)
+
+The Dockerfile uses a multi-stage build: Node builds the React frontend, then Python serves both the API and static files from a single container.
+
+```bash
+# Build
+docker build -t vibe-kanban .
+
+# Run
+docker run -d \
+  -p 8004:8004 \
+  -e JWT_SECRET_KEY=$(openssl rand -hex 32) \
+  -e FRONTEND_URL=https://your-domain.com \
+  -v kanban-data:/app/backend/data \
+  vibe-kanban
 ```
-backend/
-  app/
-    core/        # config, database, security (JWT + API key auth)
-    models/      # User, ApiKey, Ticket, Comment (SQLAlchemy async)
-    schemas/     # Pydantic request/response models
-    api/
-      auth.py       # register, login, Google OAuth
-      api_keys.py   # CRUD for projects (max 10 per account)
-      tickets.py    # CRUD + move (JWT auth, web UI)
-      external.py   # Agent API (X-API-Key auth, quota-enforced)
 
-frontend/
-  src/
-    components/  # KanbanBoard, KanbanColumn, TicketCard, TicketModal
-    contexts/    # AuthContext (JWT state management)
-    pages/       # Login, Register, Settings, Board
-    api/         # Axios client with auth interceptor
+Or with docker compose:
 
-e2e/
-  test_e2e.py              # API-level E2E tests (2 scenarios)
-  playwright_e2e_steps.md  # Playwright MCP browser test guide
+```bash
+docker compose up -d
 ```
+
+### Cloud platforms
+
+The Docker image works with any container platform:
+
+| Platform | Difficulty | Notes |
+|----------|-----------|-------|
+| **Railway / Render** | Easy | Connect GitHub repo, auto-deploy. Add managed PostgreSQL for production. |
+| **Fly.io** | Medium | `fly launch` with Dockerfile. Global edge deployment. |
+| **Coolify** (self-hosted) | Medium | Full control on your own VPS. Built-in auto-HTTPS. |
+| **VPS + Caddy** | Advanced | Most flexible. Caddy provides automatic HTTPS via Let's Encrypt. |
+
+### Production checklist
+
+- [ ] Change `JWT_SECRET_KEY` to a strong random value (`openssl rand -hex 32`)
+- [ ] Set `FRONTEND_URL` to your actual domain (for CORS)
+- [ ] Consider PostgreSQL for multi-user usage (change `DATABASE_URL`)
+- [ ] Set up HTTPS via reverse proxy (Caddy, nginx, or platform-managed)
+- [ ] Set up backups for the database
+
+## Environment Variables
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `DATABASE_URL` | `sqlite+aiosqlite:///./whereis_ticket.db` | No | Database connection string |
+| `JWT_SECRET_KEY` | `change-me-to-a-random-secret` | **Yes** | JWT signing secret — **must change in production** |
+| `JWT_ALGORITHM` | `HS256` | No | JWT algorithm |
+| `JWT_EXPIRE_MINUTES` | `1440` | No | Token expiry (default 24h) |
+| `GOOGLE_CLIENT_ID` | _(empty)_ | No | Google OAuth client ID (optional) |
+| `GOOGLE_CLIENT_SECRET` | _(empty)_ | No | Google OAuth client secret (optional) |
+| `GOOGLE_REDIRECT_URI` | `http://localhost:8004/api/v1/auth/google/callback` | No | OAuth redirect URL |
+| `FRONTEND_URL` | `http://localhost:5177` | No | Frontend URL for CORS and OAuth redirects |
+| `API_V1_PREFIX` | `/api/v1` | No | API version prefix |
 
 ## Running E2E Tests
 
@@ -223,17 +360,6 @@ pre-commit install
 
 - **GitHub Actions** (`.github/workflows/ci.yml`) — backend lint+test, frontend typecheck+build
 - **GitLab CI** (`.gitlab-ci.yml`) — equivalent `lint → test → build` stages
-
-## Environment Variables
-
-| Variable | Default | Description |
-|---|---|---|
-| `DATABASE_URL` | `sqlite+aiosqlite:///./whereis_ticket.db` | Database connection |
-| `JWT_SECRET_KEY` | `change-me-to-a-random-secret` | JWT signing secret |
-| `JWT_EXPIRE_MINUTES` | `1440` | Token expiry (default 24h) |
-| `GOOGLE_CLIENT_ID` | _(empty)_ | Google OAuth client ID (optional) |
-| `GOOGLE_CLIENT_SECRET` | _(empty)_ | Google OAuth client secret (optional) |
-| `FRONTEND_URL` | `http://localhost:5177` | Frontend URL for CORS |
 
 ## Contributing
 

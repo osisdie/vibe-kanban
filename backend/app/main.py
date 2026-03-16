@@ -1,12 +1,19 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from pathlib import Path
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.database import engine, Base
 from app.api import health, auth, api_keys, tickets, external
 
 settings = get_settings()
+
+# Frontend dist/ path (populated by Docker multi-stage build)
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 
 
 @asynccontextmanager
@@ -32,3 +39,15 @@ app.include_router(auth.router, prefix=prefix)
 app.include_router(api_keys.router, prefix=prefix)
 app.include_router(tickets.router, prefix=prefix)
 app.include_router(external.router, prefix=prefix)
+
+# Serve frontend static files in production (when dist/ exists)
+if FRONTEND_DIR.is_dir():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="static")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(request: Request, full_path: str):
+        """Serve the React SPA for all non-API routes."""
+        file_path = FRONTEND_DIR / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(FRONTEND_DIR / "index.html")
