@@ -38,7 +38,7 @@ jobs:
         run: |
           uvicorn app.main:app --host 127.0.0.1 --port 8004 &
           sleep 3
-          cd .. && python e2e/test_e2e.py
+          python "$GITHUB_WORKSPACE/e2e/test_e2e.py"
 
   frontend:
     runs-on: ubuntu-latest
