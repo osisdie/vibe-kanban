@@ -7,8 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from sqlalchemy import text
-
 from app.core.config import get_settings
 from app.core.database import engine, Base
 from app.api import health, auth, api_keys, tickets, external, admin
@@ -34,17 +32,6 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables verified (CREATE IF NOT EXISTS)")
-        # Add columns that create_all won't add to existing tables
-        if db_type == "PostgreSQL":
-            migrations = [
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ",
-                "ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS description VARCHAR(500)",
-                "ALTER TABLE api_keys ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ",
-            ]
-            for sql in migrations:
-                await conn.execute(text(sql))
-            logger.info("Schema migrations applied")
     except Exception:
         # Multiple gunicorn workers race on create_all; losers hit
         # DuplicateTableError which is safe to ignore — tables exist.
