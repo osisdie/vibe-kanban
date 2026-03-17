@@ -13,7 +13,7 @@ class Comment(Base):
     content: Mapped[str] = mapped_column(Text)
     is_status_change: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
 
     ticket = relationship("Ticket", back_populates="comments")
