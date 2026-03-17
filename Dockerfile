@@ -29,4 +29,4 @@ EXPOSE 8004
 # Run from backend/ so relative DB path works
 WORKDIR /app/backend
 # Shell form so ${PORT:-8004} is expanded by sh
-CMD gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:${PORT:-8004} --access-logfile -
+CMD python migrate.py && gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:${PORT:-8004} --access-logfile -
