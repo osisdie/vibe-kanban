@@ -3,6 +3,46 @@ export interface User {
   email: string;
   display_name: string;
   avatar_url?: string;
+  role: string;
+}
+
+export interface AdminStats {
+  total_users: number;
+  total_projects: number;
+  total_tickets: number;
+  total_api_calls: number;
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  display_name: string;
+  role: string;
+  created_at: string;
+  project_count: number;
+  ticket_count: number;
+}
+
+export interface AdminProject {
+  id: number;
+  name: string;
+  owner_email: string;
+  owner_name: string;
+  usage_count: number;
+  ticket_count: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminTicket {
+  id: number;
+  title: string;
+  status: string;
+  priority: string;
+  project_name: string;
+  owner_email: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ApiKey {

@@ -6,7 +6,7 @@ When AI agents work on complex projects, tasks get lost — context windows fill
 
 > **TL;DR** — Your agent syncs its TODO list here. You watch progress in real-time. Nothing gets forgotten.
 
-**Built with:** Python (FastAPI) · React (Vite + TypeScript) · Tailwind CSS · SQLite · JWT + API Key auth
+**Built with:** Python (FastAPI) · React (Vite + TypeScript) · Tailwind CSS · SQLite/PostgreSQL · JWT + API Key auth
 
 ## Screenshots
 
@@ -30,6 +30,11 @@ Timestamped comment thread with both human and agent entries. Status changes aut
 
 ![Ticket Modal](docs/screenshots/04-ticket-modal.png)
 
+### Admin Dashboard
+Super admin view with platform-wide stats and user/project/ticket tables.
+
+![Admin Dashboard](docs/screenshots/05-admin-dashboard.png)
+
 ## Features
 
 - **5-Column Kanban** — TODO, Doing, Pending Confirming, Testing, Done
@@ -40,6 +45,10 @@ Timestamped comment thread with both human and agent entries. Status changes aut
 - **Audit Trail** — Every status transition auto-generates a timestamped comment
 - **Comments** — Both humans and agents can leave comments on tickets
 - **Quota Management** — Track API usage per project (GET requests are free)
+- **Super Admin** — First registered user gets `super_admin` role with full admin dashboard
+- **Admin Dashboard** — View all users, projects, and tickets across the platform
+- **PostgreSQL Support** — Production-ready with `asyncpg` driver (SQLite for development)
+- **Railway Deploy** — One-click deployment with `railway.toml` configuration
 - **Docker Ready** — Single-container deployment with multi-stage build
 
 ## Architecture
@@ -55,6 +64,7 @@ graph TB
         Auth["Auth API<br/>/auth/*"]
         WebAPI["Web Ticket API<br/>/api-keys/*/tickets"]
         ExtAPI["External Agent API<br/>/external/*"]
+        AdminAPI["Admin API<br/>/admin/*"]
         Health["Health Check<br/>/health"]
     end
 
@@ -64,7 +74,9 @@ graph TB
 
     WebUI -->|JWT Bearer| Auth
     WebUI -->|JWT Bearer| WebAPI
+    WebUI -->|JWT Bearer<br/>super_admin| AdminAPI
     Agent -->|X-API-Key| ExtAPI
+    AdminAPI --> DB
     WebAPI --> DB
     ExtAPI --> DB
     Auth --> DB
@@ -84,6 +96,7 @@ erDiagram
         string hashed_password
         string display_name
         string google_id
+        string role "user|super_admin"
         datetime created_at
     }
 
@@ -129,12 +142,13 @@ backend/
       api_keys.py   # CRUD for projects (max 10 per account)
       tickets.py    # CRUD + move (JWT auth, web UI)
       external.py   # Agent API (X-API-Key auth, quota-enforced)
+      admin.py      # Admin API (super_admin only, cross-user stats)
 
 frontend/
   src/
     components/  # KanbanBoard, KanbanColumn, TicketCard, TicketModal
     contexts/    # AuthContext (JWT state management)
-    pages/       # Login, Register, Settings, Board
+    pages/       # Login, Register, Settings, Board, Admin
     api/         # Axios client with auth interceptor
 
 e2e/
@@ -297,13 +311,27 @@ Or with docker compose:
 docker compose up -d
 ```
 
-### Cloud platforms
+### Railway (recommended for quick deploy)
 
-The Docker image works with any container platform:
+> **Important:** Railway containers are ephemeral — SQLite data is lost on every redeploy. You **must** use Railway's managed PostgreSQL.
+
+1. Connect your GitHub repo in Railway dashboard
+2. **Add Service > PostgreSQL** — this creates a managed, persistent database
+3. Set the `DATABASE_URL` environment variable on your app service:
+   ```
+   postgresql+asyncpg://${{Postgres.PGUSER}}:${{Postgres.PGPASSWORD}}@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
+   ```
+4. Set `JWT_SECRET_KEY` to a strong random value
+5. Set `FRONTEND_URL` to your Railway public URL (e.g. `https://your-app.up.railway.app`)
+6. Deploy — the first registered user automatically becomes `super_admin`
+
+Data safety: PostgreSQL data lives in Railway's managed storage, completely independent of app container lifecycle. Redeploys, rollbacks, and scaling do not affect your data.
+
+### Other cloud platforms
 
 | Platform | Difficulty | Notes |
 |----------|-----------|-------|
-| **Railway / Render** | Easy | Connect GitHub repo, auto-deploy. Add managed PostgreSQL for production. |
+| **Render** | Easy | Connect GitHub repo, add managed PostgreSQL. |
 | **Fly.io** | Medium | `fly launch` with Dockerfile. Global edge deployment. |
 | **Coolify** (self-hosted) | Medium | Full control on your own VPS. Built-in auto-HTTPS. |
 | **VPS + Caddy** | Advanced | Most flexible. Caddy provides automatic HTTPS via Let's Encrypt. |
@@ -320,7 +348,7 @@ The Docker image works with any container platform:
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `DATABASE_URL` | `sqlite+aiosqlite:///./whereis_ticket.db` | No | Database connection string |
+| `DATABASE_URL` | `sqlite+aiosqlite:///./vibe_kanban.db` | No | Database connection string |
 | `JWT_SECRET_KEY` | `change-me-to-a-random-secret` | **Yes** | JWT signing secret — **must change in production** |
 | `JWT_ALGORITHM` | `HS256` | No | JWT algorithm |
 | `JWT_EXPIRE_MINUTES` | `1440` | No | Token expiry (default 24h) |

@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -8,8 +9,9 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.database import engine, Base
-from app.api import health, auth, api_keys, tickets, external
+from app.api import health, auth, api_keys, tickets, external, admin
 
+logger = logging.getLogger("uvicorn.error")
 settings = get_settings()
 
 # Frontend dist/ path (populated by Docker multi-stage build)
@@ -18,12 +20,17 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dis
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    db_type = "PostgreSQL" if settings.DATABASE_URL.startswith("postgresql") else "SQLite"
+    logger.info(f"Database: {db_type}")
+    if db_type == "SQLite":
+        logger.warning("SQLite is ephemeral in containers — use PostgreSQL for production!")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database tables verified (CREATE IF NOT EXISTS)")
     yield
 
 
-app = FastAPI(title="whereis-ticket", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="vibe-kanban", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,6 +46,7 @@ app.include_router(auth.router, prefix=prefix)
 app.include_router(api_keys.router, prefix=prefix)
 app.include_router(tickets.router, prefix=prefix)
 app.include_router(external.router, prefix=prefix)
+app.include_router(admin.router, prefix=prefix)
 
 # Serve frontend static files in production (when dist/ exists)
 if FRONTEND_DIR.is_dir():

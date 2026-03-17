@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-03-17
+
+### Added
+- Super Admin role: first registered user becomes `super_admin`
+- Admin dashboard (`/admin`) with stats cards (users, projects, tickets, API calls)
+- Admin tables: Users, Projects, Tickets across all accounts
+- Admin API endpoints: `GET /admin/stats`, `/admin/users`, `/admin/projects`, `/admin/tickets`
+- `AdminRoute` guard component: redirects non-admin users to `/settings`
+- PostgreSQL support via `asyncpg` driver
+- `docker-compose.yml` now includes `postgres:16-alpine` service (port 5436:5432)
+- Usage progress bar on SettingsPage project cards (color-coded: blue/yellow/red)
+- `railway.toml` for Railway platform deployment
+- Admin nav link in Layout (visible only to super_admin)
+
+### Changed
+- User model: added `role` field (`user` or `super_admin`)
+- `UserOut` schema: now includes `role` field
+- Auth registration: first user gets `super_admin` role (both email and Google OAuth)
+- Frontend `User` type: added `role` field
+- `.env.example`: added commented PostgreSQL DATABASE_URL example
+
 ## [0.2.0] - 2026-03-15
 
 ### Added
