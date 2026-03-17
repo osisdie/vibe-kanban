@@ -20,8 +20,8 @@ COPY backend/ ./backend/
 # Copy frontend build output
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 
-# Copy .env.example as fallback (real .env provided at runtime)
-COPY .env.example ./.env.example
+# In production, env vars are injected by the platform (Railway/Docker Compose).
+# .env.example is not copied — it is only a reference for local development.
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8004

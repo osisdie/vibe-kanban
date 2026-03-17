@@ -32,3 +32,9 @@ e2e/
 
 # Environment (provided at runtime)
 .env
+.env.local
+.env.railway
+
+# Claude Code / Playwright
+.claude/
+.playwright-mcp/

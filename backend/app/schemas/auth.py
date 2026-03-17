@@ -22,5 +22,6 @@ class UserOut(BaseModel):
     email: str
     display_name: str
     avatar_url: str | None = None
+    role: str = "user"
 
     model_config = {"from_attributes": True}
