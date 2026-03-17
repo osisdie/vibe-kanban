@@ -15,6 +15,7 @@ class User(Base):
         String(255), unique=True, nullable=True, index=True
     )
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default="user")
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc)
     )

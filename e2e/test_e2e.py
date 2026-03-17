@@ -1,5 +1,5 @@
 """
-E2E tests for whereis-ticket using Playwright MCP.
+E2E tests for vibe-kanban using Playwright MCP.
 
 These tests are designed to be run via the Playwright MCP browser tools.
 They test two scenarios:
