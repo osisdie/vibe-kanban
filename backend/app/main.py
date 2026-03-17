@@ -20,10 +20,14 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dis
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    db_type = "PostgreSQL" if settings.DATABASE_URL.startswith("postgresql") else "SQLite"
+    db_type = (
+        "PostgreSQL" if settings.DATABASE_URL.startswith("postgresql") else "SQLite"
+    )
     logger.info(f"Database: {db_type}")
     if db_type == "SQLite":
-        logger.warning("SQLite is ephemeral in containers — use PostgreSQL for production!")
+        logger.warning(
+            "SQLite is ephemeral in containers — use PostgreSQL for production!"
+        )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables verified (CREATE IF NOT EXISTS)")
