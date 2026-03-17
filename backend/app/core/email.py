@@ -41,7 +41,7 @@ def _send_resend(to: str, subject: str, html_body: str) -> bool:
     resend.api_key = settings.RESEND_API_KEY
     resend.Emails.send(
         {
-            "from": "vibe-kanban <onboarding@resend.dev>",
+            "from": f"vibe-kanban <{settings.RESEND_FROM_EMAIL}>",
             "to": [to],
             "subject": subject,
             "html": html_body,

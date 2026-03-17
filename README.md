@@ -59,7 +59,8 @@ Super admin view with platform-wide stats, user suspend/unsuspend, and project r
 
 - **5-Column Kanban** — TODO, Doing, Pending Confirming, Testing, Done
 - **Dual Auth** — Email/password registration + Google OAuth
-- **Forgot & Reset Password** — Email-based password reset via SMTP (Gmail app password)
+- **Forgot & Reset Password** — Email-based password reset (Resend or SMTP)
+- **Welcome Email** — Sent on new user registration (email and Google OAuth)
 - **Change Password** — Self-service password change in profile with last-updated timestamp
 - **API Keys** — Up to 10 projects per account, each with 1000 API actions
 - **Project Descriptions** — Optional description field per project
@@ -393,10 +394,13 @@ Data safety: PostgreSQL data lives in Railway's managed storage, completely inde
 | `GOOGLE_CLIENT_ID` | _(empty)_ | No | Google OAuth client ID (optional) |
 | `GOOGLE_CLIENT_SECRET` | _(empty)_ | No | Google OAuth client secret (optional) |
 | `GOOGLE_REDIRECT_URI` | `http://localhost:8004/api/v1/auth/google/callback` | No | OAuth redirect URL |
+| `EMAIL_PROVIDER` | `smtp` | No | Email provider: `smtp` or `resend` |
 | `SMTP_HOST` | _(empty)_ | No | SMTP server hostname (e.g. `smtp.gmail.com`) |
 | `SMTP_PORT` | `587` | No | SMTP port (587 for TLS, 465 for SSL) |
 | `SMTP_USER` | _(empty)_ | No | SMTP username / sender email |
 | `SMTP_APP_PASSWORD` | _(empty)_ | No | SMTP app password (for Gmail: [App Passwords](https://myaccount.google.com/apppasswords)) |
+| `RESEND_API_KEY` | _(empty)_ | No | Resend API key (recommended for PaaS like Railway) |
+| `RESEND_FROM_EMAIL` | _(empty)_ | No | Resend sender email (must be from a verified domain) |
 | `FRONTEND_URL` | `http://localhost:5177` | No | Frontend URL for CORS and OAuth redirects |
 | `API_V1_PREFIX` | `/api/v1` | No | API version prefix |
 
