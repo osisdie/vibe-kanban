@@ -24,9 +24,7 @@ async def get_stats(
     total_users = await db.scalar(select(func.count()).select_from(User))
     total_projects = await db.scalar(select(func.count()).select_from(ApiKey))
     total_tickets = await db.scalar(select(func.count()).select_from(Ticket))
-    total_api_calls = await db.scalar(
-        select(func.coalesce(func.sum(ApiKey.usage_count), 0))
-    )
+    total_api_calls = await db.scalar(select(func.coalesce(func.sum(ApiKey.usage_count), 0)))
     return AdminStats(
         total_users=total_users or 0,
         total_projects=total_projects or 0,
@@ -45,14 +43,9 @@ async def list_users(
 
     out = []
     for user in users:
-        project_count = await db.scalar(
-            select(func.count()).select_from(ApiKey).where(ApiKey.user_id == user.id)
-        )
+        project_count = await db.scalar(select(func.count()).select_from(ApiKey).where(ApiKey.user_id == user.id))
         ticket_count = await db.scalar(
-            select(func.count())
-            .select_from(Ticket)
-            .join(ApiKey)
-            .where(ApiKey.user_id == user.id)
+            select(func.count()).select_from(Ticket).join(ApiKey).where(ApiKey.user_id == user.id)
         )
         out.append(
             AdminUserOut(
@@ -75,19 +68,13 @@ async def list_projects(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(ApiKey, User)
-        .join(User, ApiKey.user_id == User.id)
-        .order_by(ApiKey.created_at.desc())
+        select(ApiKey, User).join(User, ApiKey.user_id == User.id).order_by(ApiKey.created_at.desc())
     )
     rows = result.all()
 
     out = []
     for api_key, user in rows:
-        ticket_count = await db.scalar(
-            select(func.count())
-            .select_from(Ticket)
-            .where(Ticket.api_key_id == api_key.id)
-        )
+        ticket_count = await db.scalar(select(func.count()).select_from(Ticket).where(Ticket.api_key_id == api_key.id))
         out.append(
             AdminProjectOut(
                 id=api_key.id,

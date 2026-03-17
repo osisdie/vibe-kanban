@@ -28,9 +28,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(user_id: int, expires_delta: Optional[timedelta] = None) -> str:
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
-    )
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=settings.JWT_EXPIRE_MINUTES))
     return jwt.encode(
         {"sub": str(user_id), "exp": expire},
         settings.JWT_SECRET_KEY,
@@ -49,9 +47,7 @@ def create_reset_token(user_id: int) -> str:
 
 def decode_reset_token(token: str) -> int | None:
     try:
-        payload = jwt.decode(
-            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
-        )
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         if payload.get("purpose") != "reset":
             return None
         return int(payload["sub"])
@@ -64,9 +60,7 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> User:
     if not credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     try:
         payload = jwt.decode(
             credentials.credentials,
@@ -75,18 +69,12 @@ async def get_current_user(
         )
         user_id = int(payload["sub"])
     except (JWTError, KeyError, ValueError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     user = await db.get(User, user_id)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended")
     return user
 
 
@@ -95,17 +83,11 @@ async def get_api_key(
     db: AsyncSession = Depends(get_db),
 ) -> ApiKey:
     if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="X-API-Key header required"
-        )
-    result = await db.execute(
-        select(ApiKey).where(ApiKey.key == api_key, ApiKey.is_active.is_(True))
-    )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="X-API-Key header required")
+    result = await db.execute(select(ApiKey).where(ApiKey.key == api_key, ApiKey.is_active.is_(True)))
     key_obj = result.scalar_one_or_none()
     if not key_obj:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
     return key_obj
 
 
@@ -113,9 +95,7 @@ async def get_current_admin(
     user: User = Depends(get_current_user),
 ) -> User:
     if user.role != "super_admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return user
 
 
