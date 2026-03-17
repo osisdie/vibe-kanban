@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] - 2026-03-17
+
+### Added
+- **Forgot & Reset Password** — email-based password reset flow via SMTP
+  - `POST /auth/forgot-password` sends reset email (anti-enumeration: always returns success)
+  - `POST /auth/reset-password` validates JWT reset token (15-min expiry) and sets new password
+  - Frontend: ForgotPasswordPage, ResetPasswordPage with full dark mode support
+  - "Forgot password?" link on login page
+- **Change Password** — self-service password change on profile page
+  - `POST /auth/change-password` with current password verification
+  - `password_changed_at` field on User model, displayed as "Last changed: X ago"
+- **Admin Actions** — suspend/unsuspend users, revoke/regenerate API keys
+  - `PATCH /admin/users/{id}/suspend` and `/unsuspend` (guard: cannot suspend self)
+  - `PATCH /admin/api-keys/{id}/revoke` and `/regenerate`
+  - Admin Users tab: active/suspended badge, Suspend/Unsuspend toggle per row
+  - Admin Projects tab: Revoke/Regenerate buttons per row
+- **User Self-Service API Key Actions** — revoke, regenerate, update on SettingsPage
+  - `PATCH /api-keys/{id}/revoke`, `PATCH /api-keys/{id}/regenerate`
+  - `PUT /api-keys/{id}` — update name and description
+  - Revoked keys show "Revoked" badge with disabled board link
+- **Project Description** — optional `description` field on ApiKey model and UI
+- **API Key Timestamps** — `last_used_at` tracked on every API usage, displayed on project cards
+- **User Profile Page** (`/profile`) — edit display name, view role/email/member-since
+- **User Avatar** — circular avatar from Google OAuth photo or generated initial letter
+- **Avatar Dropdown** — replaces old nav layout; includes Edit Profile, Admin Dashboard (super_admin), Dark Mode toggle, Logout
+- **Dark Mode** — class-based toggle via ThemeContext, persisted to localStorage
+  - Tailwind v4 `@custom-variant dark` configuration
+  - Dark mode classes on all pages: Login, Register, ForgotPassword, ResetPassword, Settings, Profile, Admin
+- **Footer** — "© 2026 vibe-kanban. Maintained by Kevin Wu" with GitHub link
+- **SMTP Email Utility** — `backend/app/core/email.py` with async aiosmtplib
+- **User `is_active` field** — enables account suspension; checked on every authenticated request (403 if suspended)
+
+### Changed
+- User model: added `is_active`, `password_changed_at` columns
+- ApiKey model: added `description`, `last_used_at` columns
+- `UserOut` schema: added `is_active`, `password_changed_at`, `created_at`
+- `AdminUserOut` schema: added `is_active` field
+- `AdminProjectOut` schema: added `description`, `last_used_at` fields
+- `ApiKeyOut` / `ApiKeyCreate` schemas: added `description`, `last_used_at`
+- `get_current_user()`: now checks `user.is_active`, raises 403 if suspended
+- `increment_usage()`: now sets `api_key.last_used_at` on every API call
+- Layout: removed "Admin" text link from left nav (moved into avatar dropdown)
+- Login page: added dark mode classes
+- Settings page: added SMTP config vars (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_APP_PASSWORD`)
+- `requirements.txt`: added `aiosmtplib>=5.0.0`
+- README: updated screenshots, features, data model, architecture diagram, env vars table
+
 ## [0.3.0] - 2026-03-17
 
 ### Added

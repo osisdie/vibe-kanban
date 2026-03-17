@@ -11,12 +11,17 @@ When AI agents work on complex projects, tasks get lost — context windows fill
 ## Screenshots
 
 ### Login
-Email/password + Google OAuth.
+Email/password + Google OAuth. Includes "Forgot password?" flow with email reset link.
 
 ![Login Page](docs/screenshots/01-login.png)
 
+### Forgot Password
+Enter your email to receive a password reset link (15-minute expiry).
+
+![Forgot Password](docs/screenshots/09-forgot-password.png)
+
 ### Projects (API Keys)
-Each project gets a unique API key. Up to 10 per account, each with 1000 API actions.
+Each project gets a unique API key with description, timestamps (created/last used), and self-service revoke/regenerate actions.
 
 ![Projects Page](docs/screenshots/02-projects.png)
 
@@ -30,8 +35,23 @@ Timestamped comment thread with both human and agent entries. Status changes aut
 
 ![Ticket Modal](docs/screenshots/04-ticket-modal.png)
 
+### User Avatar & Dropdown
+Clickable avatar with profile edit, admin link (super_admin only), dark mode toggle, and logout.
+
+![Avatar Dropdown](docs/screenshots/07-avatar-dropdown.png)
+
+### Edit Profile
+Update display name and change password with "last changed" timestamp.
+
+![Profile Page](docs/screenshots/06-profile.png)
+
+### Dark Mode
+Toggle dark mode from the avatar dropdown. Preference persists across sessions via localStorage.
+
+![Dark Mode](docs/screenshots/08-dark-mode.png)
+
 ### Admin Dashboard
-Super admin view with platform-wide stats and user/project/ticket tables.
+Super admin view with platform-wide stats, user suspend/unsuspend, and project revoke/regenerate actions.
 
 ![Admin Dashboard](docs/screenshots/05-admin-dashboard.png)
 
@@ -39,13 +59,21 @@ Super admin view with platform-wide stats and user/project/ticket tables.
 
 - **5-Column Kanban** — TODO, Doing, Pending Confirming, Testing, Done
 - **Dual Auth** — Email/password registration + Google OAuth
+- **Forgot & Reset Password** — Email-based password reset via SMTP (Gmail app password)
+- **Change Password** — Self-service password change in profile with last-updated timestamp
 - **API Keys** — Up to 10 projects per account, each with 1000 API actions
+- **Project Descriptions** — Optional description field per project
+- **API Key Actions** — Revoke, regenerate, and edit API keys (both user and admin)
 - **External Agent API** — `X-API-Key` authenticated endpoints for agents to create, move, and comment on tickets
 - **Drag & Drop** — Move tickets between columns in the web UI
 - **Audit Trail** — Every status transition auto-generates a timestamped comment
 - **Comments** — Both humans and agents can leave comments on tickets
-- **Quota Management** — Track API usage per project (GET requests are free)
+- **Quota Management** — Track API usage per project with `last_used_at` timestamps (GET requests are free)
+- **User Profile** — Edit display name, view role and member-since date
+- **User Avatar** — Circular avatar from Google OAuth photo or generated initial letter
+- **Dark Mode** — Toggle from avatar dropdown, persisted to localStorage, supports system preference
 - **Super Admin** — First registered user gets `super_admin` role with full admin dashboard
+- **Admin Actions** — Suspend/unsuspend users, revoke/regenerate API keys
 - **Admin Dashboard** — View all users, projects, and tickets across the platform
 - **PostgreSQL Support** — Production-ready with `asyncpg` driver (SQLite for development)
 - **Railway Deploy** — One-click deployment with `railway.toml` configuration
@@ -66,6 +94,7 @@ graph TB
         ExtAPI["External Agent API<br/>/external/*"]
         AdminAPI["Admin API<br/>/admin/*"]
         Health["Health Check<br/>/health"]
+        SMTP["SMTP Email<br/>(password reset)"]
     end
 
     subgraph Data
@@ -76,6 +105,7 @@ graph TB
     WebUI -->|JWT Bearer| WebAPI
     WebUI -->|JWT Bearer<br/>super_admin| AdminAPI
     Agent -->|X-API-Key| ExtAPI
+    Auth -->|reset email| SMTP
     AdminAPI --> DB
     WebAPI --> DB
     ExtAPI --> DB
@@ -96,7 +126,10 @@ erDiagram
         string hashed_password
         string display_name
         string google_id
+        string avatar_url
         string role "user|super_admin"
+        bool is_active
+        datetime password_changed_at
         datetime created_at
     }
 
@@ -104,9 +137,12 @@ erDiagram
         int id PK
         int user_id FK
         string name
+        string description
         string key UK "64-char hex"
         int usage_count
         bool is_active
+        datetime last_used_at
+        datetime created_at
     }
 
     Ticket {
@@ -134,21 +170,21 @@ erDiagram
 ```
 backend/
   app/
-    core/        # config, database, security (JWT + API key auth)
+    core/        # config, database, security (JWT + API key auth), email (SMTP)
     models/      # User, ApiKey, Ticket, Comment (SQLAlchemy async)
     schemas/     # Pydantic request/response models
     api/
-      auth.py       # register, login, Google OAuth
-      api_keys.py   # CRUD for projects (max 10 per account)
+      auth.py       # register, login, Google OAuth, forgot/reset/change password
+      api_keys.py   # CRUD + revoke/regenerate for projects (max 10 per account)
       tickets.py    # CRUD + move (JWT auth, web UI)
       external.py   # Agent API (X-API-Key auth, quota-enforced)
-      admin.py      # Admin API (super_admin only, cross-user stats)
+      admin.py      # Admin API (super_admin only, suspend/unsuspend, revoke/regen)
 
 frontend/
   src/
-    components/  # KanbanBoard, KanbanColumn, TicketCard, TicketModal
-    contexts/    # AuthContext (JWT state management)
-    pages/       # Login, Register, Settings, Board, Admin
+    components/  # KanbanBoard, KanbanColumn, TicketCard, TicketModal, UserAvatar, Layout
+    contexts/    # AuthContext (JWT state), ThemeContext (dark mode)
+    pages/       # Login, Register, ForgotPassword, ResetPassword, Settings, Board, Profile, Admin
     api/         # Axios client with auth interceptor
 
 e2e/
@@ -323,7 +359,8 @@ docker compose up -d
    ```
 4. Set `JWT_SECRET_KEY` to a strong random value
 5. Set `FRONTEND_URL` to your Railway public URL (e.g. `https://your-app.up.railway.app`)
-6. Deploy — the first registered user automatically becomes `super_admin`
+6. Set SMTP variables for password reset emails (see Environment Variables below)
+7. Deploy — the first registered user automatically becomes `super_admin`
 
 Data safety: PostgreSQL data lives in Railway's managed storage, completely independent of app container lifecycle. Redeploys, rollbacks, and scaling do not affect your data.
 
@@ -340,6 +377,7 @@ Data safety: PostgreSQL data lives in Railway's managed storage, completely inde
 
 - [ ] Change `JWT_SECRET_KEY` to a strong random value (`openssl rand -hex 32`)
 - [ ] Set `FRONTEND_URL` to your actual domain (for CORS)
+- [ ] Configure SMTP variables for password reset emails
 - [ ] Consider PostgreSQL for multi-user usage (change `DATABASE_URL`)
 - [ ] Set up HTTPS via reverse proxy (Caddy, nginx, or platform-managed)
 - [ ] Set up backups for the database
@@ -355,6 +393,10 @@ Data safety: PostgreSQL data lives in Railway's managed storage, completely inde
 | `GOOGLE_CLIENT_ID` | _(empty)_ | No | Google OAuth client ID (optional) |
 | `GOOGLE_CLIENT_SECRET` | _(empty)_ | No | Google OAuth client secret (optional) |
 | `GOOGLE_REDIRECT_URI` | `http://localhost:8004/api/v1/auth/google/callback` | No | OAuth redirect URL |
+| `SMTP_HOST` | _(empty)_ | No | SMTP server hostname (e.g. `smtp.gmail.com`) |
+| `SMTP_PORT` | `587` | No | SMTP port (587 for TLS, 465 for SSL) |
+| `SMTP_USER` | _(empty)_ | No | SMTP username / sender email |
+| `SMTP_APP_PASSWORD` | _(empty)_ | No | SMTP app password (for Gmail: [App Passwords](https://myaccount.google.com/apppasswords)) |
 | `FRONTEND_URL` | `http://localhost:5177` | No | Frontend URL for CORS and OAuth redirects |
 | `API_V1_PREFIX` | `/api/v1` | No | API version prefix |
 
@@ -401,3 +443,7 @@ pip install pre-commit && pre-commit install
 ## License
 
 MIT
+
+---
+
+Maintained by [Kevin Wu](https://github.com/osisdie) · &copy; 2026

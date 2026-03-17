@@ -1,6 +1,8 @@
 """Admin API — super_admin only endpoints."""
 
-from fastapi import APIRouter, Depends
+import secrets
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -58,6 +60,7 @@ async def list_users(
                 email=user.email,
                 display_name=user.display_name,
                 role=user.role,
+                is_active=user.is_active,
                 created_at=user.created_at,
                 project_count=project_count or 0,
                 ticket_count=ticket_count or 0,
@@ -89,12 +92,14 @@ async def list_projects(
             AdminProjectOut(
                 id=api_key.id,
                 name=api_key.name,
+                description=api_key.description,
                 owner_email=user.email,
                 owner_name=user.display_name,
                 usage_count=api_key.usage_count,
                 ticket_count=ticket_count or 0,
                 is_active=api_key.is_active,
                 created_at=api_key.created_at,
+                last_used_at=api_key.last_used_at,
             )
         )
     return out
@@ -127,3 +132,63 @@ async def list_tickets(
         )
         for ticket, api_key, user in rows
     ]
+
+
+@router.patch("/users/{user_id}/suspend")
+async def suspend_user(
+    user_id: int,
+    admin: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if admin.id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot suspend yourself")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_active = False
+    db.add(user)
+    return {"detail": "User suspended"}
+
+
+@router.patch("/users/{user_id}/unsuspend")
+async def unsuspend_user(
+    user_id: int,
+    _: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_active = True
+    db.add(user)
+    return {"detail": "User unsuspended"}
+
+
+@router.patch("/api-keys/{key_id}/revoke")
+async def revoke_api_key(
+    key_id: int,
+    _: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    api_key = await db.get(ApiKey, key_id)
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    api_key.is_active = False
+    db.add(api_key)
+    return {"detail": "API key revoked"}
+
+
+@router.patch("/api-keys/{key_id}/regenerate")
+async def regenerate_api_key(
+    key_id: int,
+    _: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    api_key = await db.get(ApiKey, key_id)
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    api_key.key = secrets.token_hex(32)
+    api_key.usage_count = 0
+    api_key.is_active = True
+    db.add(api_key)
+    return {"detail": "API key regenerated", "key": api_key.key}
