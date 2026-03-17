@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
@@ -24,10 +24,13 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(User).where(User.email == req.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
+    user_count = await db.scalar(select(func.count()).select_from(User))
+    role = "super_admin" if user_count == 0 else "user"
     user = User(
         email=req.email,
         hashed_password=hash_password(req.password),
         display_name=req.display_name,
+        role=role,
     )
     db.add(user)
     await db.flush()
@@ -94,11 +97,14 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
             user.google_id = userinfo["sub"]
             user.avatar_url = userinfo.get("picture")
         else:
+            user_count = await db.scalar(select(func.count()).select_from(User))
+            role = "super_admin" if user_count == 0 else "user"
             user = User(
                 email=userinfo["email"],
                 display_name=userinfo.get("name", userinfo["email"]),
                 google_id=userinfo["sub"],
                 avatar_url=userinfo.get("picture"),
+                role=role,
             )
             db.add(user)
     await db.flush()

@@ -84,6 +84,16 @@ async def get_api_key(
     return key_obj
 
 
+async def get_current_admin(
+    user: User = Depends(get_current_user),
+) -> User:
+    if user.role != "super_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
+    return user
+
+
 async def increment_usage(api_key: ApiKey, db: AsyncSession):
     if api_key.usage_count >= 1000:
         raise HTTPException(

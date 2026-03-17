@@ -80,6 +80,20 @@ export default function SettingsPage() {
                   {k.usage_count}/1000 actions
                 </span>
               </div>
+              <div className="mt-2 w-64">
+                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                  <span>{k.usage_count} used</span>
+                  <span>{1000 - k.usage_count} remaining</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all ${
+                      k.usage_count >= 900 ? 'bg-red-500' : k.usage_count >= 700 ? 'bg-yellow-500' : 'bg-blue-500'
+                    }`}
+                    style={{ width: `${Math.min((k.usage_count / 1000) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
               <div className="mt-1 flex items-center gap-2">
                 <code className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">
                   {k.key.slice(0, 12)}...
