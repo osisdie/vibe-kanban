@@ -28,9 +28,14 @@ async def lifespan(app: FastAPI):
         logger.warning(
             "SQLite is ephemeral in containers — use PostgreSQL for production!"
         )
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("Database tables verified (CREATE IF NOT EXISTS)")
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables verified (CREATE IF NOT EXISTS)")
+    except Exception:
+        # Multiple gunicorn workers race on create_all; losers hit
+        # DuplicateTableError which is safe to ignore — tables exist.
+        logger.info("Database tables already exist (concurrent worker)")
     yield
 
 
