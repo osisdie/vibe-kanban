@@ -35,12 +35,8 @@ async def _get_ticket(ticket_id: int, api_key: ApiKey, db: AsyncSession) -> Tick
 
 
 @router.get("/tickets", response_model=list[TicketBrief])
-async def list_tickets(
-    api_key: ApiKey = Depends(get_api_key), db: AsyncSession = Depends(get_db)
-):
-    result = await db.execute(
-        select(Ticket).where(Ticket.api_key_id == api_key.id).order_by(Ticket.order)
-    )
+async def list_tickets(api_key: ApiKey = Depends(get_api_key), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Ticket).where(Ticket.api_key_id == api_key.id).order_by(Ticket.order))
     return result.scalars().all()
 
 
