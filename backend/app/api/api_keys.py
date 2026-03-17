@@ -1,3 +1,5 @@
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,7 +8,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.api_key import ApiKey
-from app.schemas.api_key import ApiKeyCreate, ApiKeyOut
+from app.schemas.api_key import ApiKeyCreate, ApiKeyUpdate, ApiKeyOut
 
 router = APIRouter(prefix="/api-keys", tags=["api-keys"])
 
@@ -32,7 +34,68 @@ async def create_api_key(
     result = await db.execute(select(ApiKey).where(ApiKey.user_id == user.id))
     if len(result.scalars().all()) >= 10:
         raise HTTPException(status_code=400, detail="Maximum 10 API keys per account")
-    api_key = ApiKey(user_id=user.id, name=req.name)
+    api_key = ApiKey(user_id=user.id, name=req.name, description=req.description)
+    db.add(api_key)
+    await db.flush()
+    await db.refresh(api_key)
+    return api_key
+
+
+@router.put("/{key_id}", response_model=ApiKeyOut)
+async def update_api_key(
+    key_id: int,
+    req: ApiKeyUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id)
+    )
+    api_key = result.scalar_one_or_none()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    if req.name is not None:
+        api_key.name = req.name
+    if req.description is not None:
+        api_key.description = req.description
+    db.add(api_key)
+    await db.flush()
+    await db.refresh(api_key)
+    return api_key
+
+
+@router.patch("/{key_id}/revoke")
+async def revoke_api_key(
+    key_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id)
+    )
+    api_key = result.scalar_one_or_none()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    api_key.is_active = False
+    db.add(api_key)
+    return {"detail": "API key revoked"}
+
+
+@router.patch("/{key_id}/regenerate")
+async def regenerate_api_key(
+    key_id: int,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id)
+    )
+    api_key = result.scalar_one_or_none()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    api_key.key = secrets.token_hex(32)
+    api_key.usage_count = 0
+    api_key.is_active = True
     db.add(api_key)
     await db.flush()
     await db.refresh(api_key)

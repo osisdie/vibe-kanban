@@ -38,6 +38,27 @@ def create_access_token(user_id: int, expires_delta: Optional[timedelta] = None)
     )
 
 
+def create_reset_token(user_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    return jwt.encode(
+        {"sub": str(user_id), "purpose": "reset", "exp": expire},
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+
+
+def decode_reset_token(token: str) -> int | None:
+    try:
+        payload = jwt.decode(
+            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+        )
+        if payload.get("purpose") != "reset":
+            return None
+        return int(payload["sub"])
+    except (JWTError, KeyError, ValueError):
+        return None
+
+
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
@@ -61,6 +82,10 @@ async def get_current_user(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account suspended"
         )
     return user
 
@@ -101,4 +126,5 @@ async def increment_usage(api_key: ApiKey, db: AsyncSession):
             detail="API key quota exceeded (1000 actions)",
         )
     api_key.usage_count += 1
+    api_key.last_used_at = datetime.now(timezone.utc)
     db.add(api_key)

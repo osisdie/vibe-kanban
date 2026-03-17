@@ -14,6 +14,7 @@ class AdminUserOut(BaseModel):
     email: str
     display_name: str
     role: str
+    is_active: bool
     created_at: datetime
     project_count: int
     ticket_count: int
@@ -24,12 +25,14 @@ class AdminUserOut(BaseModel):
 class AdminProjectOut(BaseModel):
     id: int
     name: str
+    description: str | None = None
     owner_email: str
     owner_name: str
     usage_count: int
     ticket_count: int
     is_active: bool
     created_at: datetime
+    last_used_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
