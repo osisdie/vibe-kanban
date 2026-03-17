@@ -3,9 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Dockerfile WORKDIR is /app/backend, so no "cd" needed
-# Railway injects $PORT automatically; gunicorn reads it directly
-startCommand = "gunicorn app.main:app -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:$PORT --access-logfile -"
+# No startCommand — Dockerfile CMD handles $PORT via shell form
 healthcheckPath = "/api/v1/health"
 healthcheckTimeout = 30
 restartPolicyType = "on_failure"
