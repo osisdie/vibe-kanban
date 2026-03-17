@@ -22,9 +22,7 @@ router = APIRouter(tags=["tickets"])
 
 
 async def _get_user_api_key(ak_id: int, user: User, db: AsyncSession) -> ApiKey:
-    result = await db.execute(
-        select(ApiKey).where(ApiKey.id == ak_id, ApiKey.user_id == user.id)
-    )
+    result = await db.execute(select(ApiKey).where(ApiKey.id == ak_id, ApiKey.user_id == user.id))
     api_key = result.scalar_one_or_none()
     if not api_key:
         raise HTTPException(status_code=404, detail="API key not found")
@@ -51,9 +49,7 @@ async def list_tickets(
     db: AsyncSession = Depends(get_db),
 ):
     await _get_user_api_key(ak_id, user, db)
-    result = await db.execute(
-        select(Ticket).where(Ticket.api_key_id == ak_id).order_by(Ticket.order)
-    )
+    result = await db.execute(select(Ticket).where(Ticket.api_key_id == ak_id).order_by(Ticket.order))
     return result.scalars().all()
 
 
@@ -66,9 +62,7 @@ async def create_ticket(
 ):
     await _get_user_api_key(ak_id, user, db)
     max_order = await db.execute(
-        select(func.coalesce(func.max(Ticket.order), -1)).where(
-            Ticket.api_key_id == ak_id, Ticket.status == req.status
-        )
+        select(func.coalesce(func.max(Ticket.order), -1)).where(Ticket.api_key_id == ak_id, Ticket.status == req.status)
     )
     ticket = Ticket(
         api_key_id=ak_id,
