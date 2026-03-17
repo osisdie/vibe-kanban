@@ -12,10 +12,12 @@ class Settings(BaseSettings):
     GOOGLE_REDIRECT_URI: str = "http://localhost:8004/api/v1/auth/google/callback"
     FRONTEND_URL: str = "http://localhost:5177"
     API_V1_PREFIX: str = "/api/v1"
+    EMAIL_PROVIDER: str = "smtp"  # "smtp" or "resend"
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_APP_PASSWORD: str = ""
+    RESEND_API_KEY: str = ""
 
     class Config:
         env_file = ".env"

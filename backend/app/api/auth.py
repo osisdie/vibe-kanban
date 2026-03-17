@@ -16,7 +16,7 @@ from app.core.security import (
     decode_reset_token,
     get_current_user,
 )
-from app.core.email import send_password_reset_email
+from app.core.email import send_password_reset_email, send_welcome_email
 from app.models.user import User
 from app.schemas.auth import (
     RegisterRequest,
@@ -48,6 +48,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     )
     db.add(user)
     await db.flush()
+    await send_welcome_email(user.email, user.display_name)
     return TokenResponse(access_token=create_access_token(user.id))
 
 
@@ -193,6 +194,8 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
                 role=role,
             )
             db.add(user)
+            await db.flush()
+            await send_welcome_email(user.email, user.display_name)
     await db.flush()
     jwt_token = create_access_token(user.id)
     return RedirectResponse(f"{settings.FRONTEND_URL}/login?token={jwt_token}")
