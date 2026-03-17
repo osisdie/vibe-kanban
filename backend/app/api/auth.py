@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select, func
@@ -10,10 +12,22 @@ from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
+    create_reset_token,
+    decode_reset_token,
     get_current_user,
 )
+from app.core.email import send_password_reset_email
 from app.models.user import User
-from app.schemas.auth import RegisterRequest, LoginRequest, TokenResponse, UserOut
+from app.schemas.auth import (
+    RegisterRequest,
+    LoginRequest,
+    TokenResponse,
+    UserOut,
+    UserUpdate,
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -53,6 +67,78 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 async def me(user: User = Depends(get_current_user)):
     return user
+
+
+@router.patch("/me", response_model=UserOut)
+async def update_me(
+    req: UserUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if req.display_name is not None:
+        user.display_name = req.display_name
+    db.add(user)
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
+@router.post("/change-password")
+async def change_password(
+    req: ChangePasswordRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not user.hashed_password:
+        raise HTTPException(
+            status_code=400,
+            detail="Account uses Google login. Set a password via forgot-password first.",
+        )
+    if not verify_password(req.current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if len(req.new_password) < 6:
+        raise HTTPException(
+            status_code=400, detail="Password must be at least 6 characters"
+        )
+    user.hashed_password = hash_password(req.new_password)
+    user.password_changed_at = datetime.now(timezone.utc)
+    db.add(user)
+    return {"detail": "Password changed successfully"}
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    req: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(User).where(User.email == req.email))
+    user = result.scalar_one_or_none()
+    # Always return success to prevent email enumeration
+    if user:
+        token = create_reset_token(user.id)
+        await send_password_reset_email(user.email, token)
+    return {"detail": "If that email exists, a reset link has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password(
+    req: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    user_id = decode_reset_token(req.token)
+    if user_id is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+    if len(req.new_password) < 6:
+        raise HTTPException(
+            status_code=400, detail="Password must be at least 6 characters"
+        )
+    user.hashed_password = hash_password(req.new_password)
+    user.password_changed_at = datetime.now(timezone.utc)
+    db.add(user)
+    return {"detail": "Password has been reset. You can now log in."}
 
 
 @router.get("/google")
