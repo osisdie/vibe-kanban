@@ -14,14 +14,8 @@ router = APIRouter(prefix="/api-keys", tags=["api-keys"])
 
 
 @router.get("", response_model=list[ApiKeyOut])
-async def list_api_keys(
-    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-):
-    result = await db.execute(
-        select(ApiKey)
-        .where(ApiKey.user_id == user.id)
-        .order_by(ApiKey.created_at.desc())
-    )
+async def list_api_keys(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ApiKey).where(ApiKey.user_id == user.id).order_by(ApiKey.created_at.desc()))
     return result.scalars().all()
 
 
@@ -48,9 +42,7 @@ async def update_api_key(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id)
-    )
+    result = await db.execute(select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id))
     api_key = result.scalar_one_or_none()
     if not api_key:
         raise HTTPException(status_code=404, detail="API key not found")
@@ -70,9 +62,7 @@ async def revoke_api_key(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id)
-    )
+    result = await db.execute(select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id))
     api_key = result.scalar_one_or_none()
     if not api_key:
         raise HTTPException(status_code=404, detail="API key not found")
@@ -87,9 +77,7 @@ async def regenerate_api_key(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id)
-    )
+    result = await db.execute(select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id))
     api_key = result.scalar_one_or_none()
     if not api_key:
         raise HTTPException(status_code=404, detail="API key not found")
@@ -108,9 +96,7 @@ async def delete_api_key(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id)
-    )
+    result = await db.execute(select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user.id))
     api_key = result.scalar_one_or_none()
     if not api_key:
         raise HTTPException(status_code=404, detail="API key not found")

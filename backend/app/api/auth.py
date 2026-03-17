@@ -16,7 +16,7 @@ from app.core.security import (
     decode_reset_token,
     get_current_user,
 )
-from app.core.email import send_password_reset_email
+from app.core.email import send_password_reset_email, send_welcome_email
 from app.models.user import User
 from app.schemas.auth import (
     RegisterRequest,
@@ -48,6 +48,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     )
     db.add(user)
     await db.flush()
+    await send_welcome_email(user.email, user.display_name)
     return TokenResponse(access_token=create_access_token(user.id))
 
 
@@ -55,11 +56,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == req.email))
     user = result.scalar_one_or_none()
-    if (
-        not user
-        or not user.hashed_password
-        or not verify_password(req.password, user.hashed_password)
-    ):
+    if not user or not user.hashed_password or not verify_password(req.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return TokenResponse(access_token=create_access_token(user.id))
 
@@ -97,9 +94,7 @@ async def change_password(
     if not verify_password(req.current_password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     if len(req.new_password) < 6:
-        raise HTTPException(
-            status_code=400, detail="Password must be at least 6 characters"
-        )
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     user.hashed_password = hash_password(req.new_password)
     user.password_changed_at = datetime.now(timezone.utc)
     db.add(user)
@@ -132,9 +127,7 @@ async def reset_password(
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset link")
     if len(req.new_password) < 6:
-        raise HTTPException(
-            status_code=400, detail="Password must be at least 6 characters"
-        )
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
     user.hashed_password = hash_password(req.new_password)
     user.password_changed_at = datetime.now(timezone.utc)
     db.add(user)
@@ -151,9 +144,7 @@ async def google_login():
         redirect_uri=settings.GOOGLE_REDIRECT_URI,
         scope="openid email profile",
     )
-    uri, _ = client.create_authorization_url(
-        "https://accounts.google.com/o/oauth2/v2/auth"
-    )
+    uri, _ = client.create_authorization_url("https://accounts.google.com/o/oauth2/v2/auth")
     return RedirectResponse(uri)
 
 
@@ -193,6 +184,8 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
                 role=role,
             )
             db.add(user)
+            await db.flush()
+            await send_welcome_email(user.email, user.display_name)
     await db.flush()
     jwt_token = create_access_token(user.id)
     return RedirectResponse(f"{settings.FRONTEND_URL}/login?token={jwt_token}")
