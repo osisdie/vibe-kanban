@@ -5,10 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-03-17
+
+### Added
+- **Dual Email Provider** — switchable via `EMAIL_PROVIDER` env var (`smtp` or `resend`)
+  - Resend (HTTP API): works on Railway/PaaS where SMTP ports are blocked
+  - SMTP (Gmail): works locally and on VPS/self-hosted
+  - `RESEND_API_KEY`, `RESEND_FROM_EMAIL` config for Resend provider
+- **Welcome Email** — sent on new user registration (both email and Google OAuth)
+- **Standalone Migration Runner** — `backend/migrate.py` runs `ALTER TABLE` SQL before app starts
+  - Versioned `.sql` files in `backend/migrations/` (idempotent with `IF NOT EXISTS`)
+  - Dockerfile `CMD` runs `python migrate.py && gunicorn ...` — fail-fast on migration error
+  - Separates schema migration from application startup
+- **Email Verification Script** — `scripts/verify_smtp.sh --provider gmail|resend`
+- **Railway CLI Reference** — `docs/railway_cli.md` with commands, workflows, and gotchas
+
+### Changed
+- Email utility: refactored to dispatch via `EMAIL_PROVIDER` (smtp/resend) instead of SMTP-only
+- `requirements.txt`: added `resend>=2.0.0`
+- Config: added `EMAIL_PROVIDER`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` settings
+- Dockerfile: `CMD` now runs `python migrate.py` before gunicorn
+- `main.py`: removed inline migration SQL (moved to `backend/migrations/*.sql`)
+
 ## [0.4.0] - 2026-03-17
 
 ### Added
-- **Forgot & Reset Password** — email-based password reset flow via SMTP
+- **Forgot & Reset Password** — email-based password reset flow
   - `POST /auth/forgot-password` sends reset email (anti-enumeration: always returns success)
   - `POST /auth/reset-password` validates JWT reset token (15-min expiry) and sets new password
   - Frontend: ForgotPasswordPage, ResetPasswordPage with full dark mode support
