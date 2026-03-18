@@ -7,8 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from slowapi.errors import RateLimitExceeded
+
 from app.core.config import get_settings
 from app.core.database import engine, Base
+from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.api import health, auth, api_keys, tickets, external, admin
 
 logger = logging.getLogger("uvicorn.error")
@@ -36,6 +39,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="vibe-kanban", version="0.1.0", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

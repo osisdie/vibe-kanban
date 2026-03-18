@@ -26,8 +26,9 @@ frontend/dist-ssr/
 *.swo
 *~
 
-# Claude Code
-.claude/
+# Claude Code (keep agents/ tracked for team sharing)
+.claude/*
+!.claude/agents/
 
 # Playwright MCP
 .playwright-mcp/

@@ -1,11 +1,13 @@
 """External Agent API — authenticated via X-API-Key header."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.rate_limit import limiter
 from app.core.security import get_api_key, increment_usage
 from app.models.api_key import ApiKey
 from app.models.ticket import Ticket
@@ -20,6 +22,7 @@ from app.schemas.ticket import (
 from app.schemas.comment import CommentCreate
 
 router = APIRouter(prefix="/external", tags=["external"])
+settings = get_settings()
 
 
 async def _get_ticket(ticket_id: int, api_key: ApiKey, db: AsyncSession) -> Ticket:
@@ -35,13 +38,16 @@ async def _get_ticket(ticket_id: int, api_key: ApiKey, db: AsyncSession) -> Tick
 
 
 @router.get("/tickets", response_model=list[TicketBrief])
-async def list_tickets(api_key: ApiKey = Depends(get_api_key), db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_EXTERNAL)
+async def list_tickets(request: Request, api_key: ApiKey = Depends(get_api_key), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Ticket).where(Ticket.api_key_id == api_key.id).order_by(Ticket.order))
     return result.scalars().all()
 
 
 @router.post("/tickets", response_model=TicketOut, status_code=201)
+@limiter.limit(settings.RATE_LIMIT_EXTERNAL)
 async def create_ticket(
+    request: Request,
     req: TicketCreate,
     api_key: ApiKey = Depends(get_api_key),
     db: AsyncSession = Depends(get_db),
@@ -68,7 +74,9 @@ async def create_ticket(
 
 
 @router.get("/tickets/{ticket_id}", response_model=TicketOut)
+@limiter.limit(settings.RATE_LIMIT_EXTERNAL)
 async def get_ticket(
+    request: Request,
     ticket_id: int,
     api_key: ApiKey = Depends(get_api_key),
     db: AsyncSession = Depends(get_db),
@@ -77,7 +85,9 @@ async def get_ticket(
 
 
 @router.put("/tickets/{ticket_id}", response_model=TicketOut)
+@limiter.limit(settings.RATE_LIMIT_EXTERNAL)
 async def update_ticket(
+    request: Request,
     ticket_id: int,
     req: TicketUpdate,
     api_key: ApiKey = Depends(get_api_key),
@@ -93,7 +103,9 @@ async def update_ticket(
 
 
 @router.patch("/tickets/{ticket_id}/move", response_model=TicketOut)
+@limiter.limit(settings.RATE_LIMIT_EXTERNAL)
 async def move_ticket(
+    request: Request,
     ticket_id: int,
     req: TicketMove,
     api_key: ApiKey = Depends(get_api_key),
@@ -128,7 +140,9 @@ async def move_ticket(
 
 
 @router.post("/tickets/{ticket_id}/comments", response_model=TicketOut)
+@limiter.limit(settings.RATE_LIMIT_EXTERNAL)
 async def add_comment(
+    request: Request,
     ticket_id: int,
     req: CommentCreate,
     api_key: ApiKey = Depends(get_api_key),
@@ -148,7 +162,8 @@ async def add_comment(
 
 
 @router.get("/usage")
-async def check_usage(api_key: ApiKey = Depends(get_api_key)):
+@limiter.limit(settings.RATE_LIMIT_EXTERNAL)
+async def check_usage(request: Request, api_key: ApiKey = Depends(get_api_key)):
     return {
         "name": api_key.name,
         "usage_count": api_key.usage_count,

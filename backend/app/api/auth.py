@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +8,7 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.rate_limit import limiter
 from app.core.security import (
     hash_password,
     verify_password,
@@ -34,7 +35,8 @@ settings = get_settings()
 
 
 @router.post("/register", response_model=TokenResponse)
-async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_REGISTER)
+async def register(request: Request, req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(User).where(User.email == req.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -53,7 +55,8 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+async def login(request: Request, req: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == req.email))
     user = result.scalar_one_or_none()
     if not user or not user.hashed_password or not verify_password(req.password, user.hashed_password):
@@ -81,7 +84,9 @@ async def update_me(
 
 
 @router.post("/change-password")
+@limiter.limit(settings.RATE_LIMIT_CHANGE_PASSWORD)
 async def change_password(
+    request: Request,
     req: ChangePasswordRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -102,7 +107,9 @@ async def change_password(
 
 
 @router.post("/forgot-password")
+@limiter.limit(settings.RATE_LIMIT_FORGOT_PASSWORD)
 async def forgot_password(
+    request: Request,
     req: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ):
@@ -116,7 +123,9 @@ async def forgot_password(
 
 
 @router.post("/reset-password")
+@limiter.limit(settings.RATE_LIMIT_RESET_PASSWORD)
 async def reset_password(
+    request: Request,
     req: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
 ):
@@ -135,7 +144,8 @@ async def reset_password(
 
 
 @router.get("/google")
-async def google_login():
+@limiter.limit(settings.RATE_LIMIT_GOOGLE_AUTH)
+async def google_login(request: Request):
     if not settings.GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=501, detail="Google OAuth not configured")
     client = AsyncOAuth2Client(
@@ -149,7 +159,8 @@ async def google_login():
 
 
 @router.get("/google/callback")
-async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_GOOGLE_AUTH)
+async def google_callback(request: Request, code: str, db: AsyncSession = Depends(get_db)):
     if not settings.GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=501, detail="Google OAuth not configured")
     client = AsyncOAuth2Client(
