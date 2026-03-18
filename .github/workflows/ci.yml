@@ -35,6 +35,11 @@ jobs:
           ruff format --check .
 
       - name: Start server and run E2E tests
+        env:
+          RATE_LIMIT_DEFAULT: "999/minute"
+          RATE_LIMIT_REGISTER: "999/minute"
+          RATE_LIMIT_LOGIN: "999/minute"
+          RATE_LIMIT_EXTERNAL: "999/minute"
         run: |
           uvicorn app.main:app --host 127.0.0.1 --port 8004 &
           sleep 3

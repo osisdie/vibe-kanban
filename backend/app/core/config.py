@@ -20,6 +20,17 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = ""
 
+    # Rate limiting (slowapi format: "count/period")
+    RATE_LIMIT_DEFAULT: str = "60/minute"
+    RATE_LIMIT_REGISTER: str = "1/3minutes"
+    RATE_LIMIT_LOGIN: str = "10/minute"
+    RATE_LIMIT_FORGOT_PASSWORD: str = "3/hour"
+    RATE_LIMIT_RESET_PASSWORD: str = "5/hour"
+    RATE_LIMIT_CHANGE_PASSWORD: str = "5/minute"
+    RATE_LIMIT_GOOGLE_AUTH: str = "10/minute"
+    RATE_LIMIT_EXTERNAL: str = "60/minute"
+    RATE_LIMIT_ADMIN: str = "30/minute"
+
     class Config:
         env_file = ".env"
         extra = "ignore"
