@@ -2,11 +2,13 @@
 
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.rate_limit import limiter
 from app.core.security import get_current_admin
 from app.models.user import User
 from app.models.api_key import ApiKey
@@ -14,10 +16,13 @@ from app.models.ticket import Ticket
 from app.schemas.admin import AdminStats, AdminUserOut, AdminProjectOut, AdminTicketOut
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+settings = get_settings()
 
 
 @router.get("/stats", response_model=AdminStats)
+@limiter.limit(settings.RATE_LIMIT_ADMIN)
 async def get_stats(
+    request: Request,
     _: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -34,7 +39,9 @@ async def get_stats(
 
 
 @router.get("/users", response_model=list[AdminUserOut])
+@limiter.limit(settings.RATE_LIMIT_ADMIN)
 async def list_users(
+    request: Request,
     _: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -63,7 +70,9 @@ async def list_users(
 
 
 @router.get("/projects", response_model=list[AdminProjectOut])
+@limiter.limit(settings.RATE_LIMIT_ADMIN)
 async def list_projects(
+    request: Request,
     _: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -93,7 +102,9 @@ async def list_projects(
 
 
 @router.get("/tickets", response_model=list[AdminTicketOut])
+@limiter.limit(settings.RATE_LIMIT_ADMIN)
 async def list_tickets(
+    request: Request,
     _: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
 ):
@@ -122,7 +133,9 @@ async def list_tickets(
 
 
 @router.patch("/users/{user_id}/suspend")
+@limiter.limit(settings.RATE_LIMIT_ADMIN)
 async def suspend_user(
+    request: Request,
     user_id: int,
     admin: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
@@ -138,7 +151,9 @@ async def suspend_user(
 
 
 @router.patch("/users/{user_id}/unsuspend")
+@limiter.limit(settings.RATE_LIMIT_ADMIN)
 async def unsuspend_user(
+    request: Request,
     user_id: int,
     _: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
@@ -152,7 +167,9 @@ async def unsuspend_user(
 
 
 @router.patch("/api-keys/{key_id}/revoke")
+@limiter.limit(settings.RATE_LIMIT_ADMIN)
 async def revoke_api_key(
+    request: Request,
     key_id: int,
     _: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
@@ -166,7 +183,9 @@ async def revoke_api_key(
 
 
 @router.patch("/api-keys/{key_id}/regenerate")
+@limiter.limit(settings.RATE_LIMIT_ADMIN)
 async def regenerate_api_key(
+    request: Request,
     key_id: int,
     _: User = Depends(get_current_admin),
     db: AsyncSession = Depends(get_db),
