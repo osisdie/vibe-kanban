@@ -31,12 +31,14 @@ async def run_migrations(conn):
     if not MIGRATIONS_DIR.is_dir():
         return
     # Create tracking table if it doesn't exist
-    await conn.execute(text(
-        "CREATE TABLE IF NOT EXISTS _migrations ("
-        "  name VARCHAR(255) PRIMARY KEY,"
-        "  applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-        ")"
-    ))
+    await conn.execute(
+        text(
+            "CREATE TABLE IF NOT EXISTS _migrations ("
+            "  name VARCHAR(255) PRIMARY KEY,"
+            "  applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+            ")"
+        )
+    )
     result = await conn.execute(text("SELECT name FROM _migrations"))
     applied = {row[0] for row in result.fetchall()}
     for sql_file in sorted(MIGRATIONS_DIR.glob("*.sql")):

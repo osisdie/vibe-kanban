@@ -88,9 +88,7 @@ async def send_password_reset_email(to: str, reset_token: str) -> bool:
     return await send_email(to, "Reset Your Password — vibe-kanban", html)
 
 
-async def send_verification_email(
-    to: str, display_name: str, code: str, verify_token: str
-) -> bool:
+async def send_verification_email(to: str, display_name: str, code: str, verify_token: str) -> bool:
     settings = get_settings()
     verify_url = f"{settings.FRONTEND_URL}/verify-email?token={verify_token}"
     html = f"""
