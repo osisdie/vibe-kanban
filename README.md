@@ -1,5 +1,12 @@
 # vibe-kanban
 
+[![CI](https://github.com/osisdie/vibe-kanban/actions/workflows/ci.yml/badge.svg)](https://github.com/osisdie/vibe-kanban/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688.svg)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6.svg)](https://www.typescriptlang.org)
+
 A Kanban board with an agent-friendly API, built for **vibe coding workflows**.
 
 When AI agents work on complex projects, tasks get lost — context windows fill up, conversations compress, and the agent forgets what it was supposed to do next. **vibe-kanban** gives agents (and humans) a shared Kanban board where every task, status change, and blocker is tracked via a simple REST API.
