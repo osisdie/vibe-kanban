@@ -23,6 +23,8 @@ export interface AdminUser {
   display_name: string;
   role: string;
   is_active: boolean;
+  email_verified: boolean;
+  login_channel: string;
   created_at: string;
   project_count: number;
   ticket_count: number;
@@ -83,6 +85,7 @@ export interface Ticket {
   priority: TicketPriority;
   order: number;
   external_ref?: string;
+  tag?: string;
   created_at: string;
   updated_at: string;
   comments: Comment[];
@@ -95,6 +98,7 @@ export interface TicketBrief {
   priority: TicketPriority;
   order: number;
   external_ref?: string;
+  tag?: string;
   created_at: string;
   updated_at: string;
 }

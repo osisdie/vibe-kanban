@@ -2,6 +2,7 @@ stages:
   - lint
   - test
   - build
+  - release
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -50,3 +51,26 @@ frontend-build:
     paths:
       - frontend/dist/
     expire_in: 1 week
+
+auto-tag:
+  stage: release
+  image: alpine/git:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - VERSION=$(grep -oP '## \[\K[0-9]+\.[0-9]+\.[0-9]+' CHANGELOG.md | head -1)
+    - |
+      if [ -z "$VERSION" ]; then
+        echo "No version found in CHANGELOG.md"
+        exit 0
+      fi
+    - TAG="v$VERSION"
+    - |
+      if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+        git remote set-url origin "https://oauth2:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
+        git tag "$TAG"
+        git push origin "$TAG"
+        echo "Tagged $TAG"
+      else
+        echo "Tag $TAG already exists, skipping"
+      fi

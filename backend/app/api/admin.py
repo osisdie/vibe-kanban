@@ -61,6 +61,8 @@ async def list_users(
                 display_name=user.display_name,
                 role=user.role,
                 is_active=user.is_active,
+                email_verified=user.email_verified,
+                login_channel="google" if user.google_id else "email",
                 created_at=user.created_at,
                 project_count=project_count or 0,
                 ticket_count=ticket_count or 0,

@@ -101,6 +101,8 @@ export default function AdminPage() {
                 <th className="px-4 py-2 text-left dark:text-gray-300">Name</th>
                 <th className="px-4 py-2 text-left dark:text-gray-300">Role</th>
                 <th className="px-4 py-2 text-left dark:text-gray-300">Status</th>
+                <th className="px-4 py-2 text-left dark:text-gray-300">Verified</th>
+                <th className="px-4 py-2 text-left dark:text-gray-300">Login</th>
                 <th className="px-4 py-2 text-right dark:text-gray-300">Projects</th>
                 <th className="px-4 py-2 text-right dark:text-gray-300">Tickets</th>
                 <th className="px-4 py-2 text-left dark:text-gray-300">Joined</th>
@@ -132,6 +134,28 @@ export default function AdminPage() {
                       }`}
                     >
                       {u.is_active ? 'active' : 'suspended'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        u.email_verified
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                          : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300'
+                      }`}
+                    >
+                      {u.email_verified ? 'yes' : 'no'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        u.login_channel === 'google'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                          : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                      }`}
+                    >
+                      {u.login_channel}
                     </span>
                   </td>
                   <td className="px-4 py-2 text-right">{u.project_count}</td>
