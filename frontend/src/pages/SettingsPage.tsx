@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import client from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 import type { ApiKey } from '../types';
 
 function timeAgo(dateStr: string): string {
@@ -15,6 +16,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth();
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -227,7 +229,10 @@ export default function SettingsPage() {
         )}
       </div>
       <p className="mt-4 text-sm text-gray-400">
-        Maximum 10 projects per account. Each project allows up to 1000 API actions.
+        Maximum {user?.email_verified ? 10 : 1} projects per account. Each project allows up to 1000 API actions.
+        {user && !user.email_verified && (
+          <> <Link to="/verify-email" className="text-blue-500 hover:underline">Verify your email</Link> to unlock 10 projects.</>
+        )}
       </p>
     </div>
   );

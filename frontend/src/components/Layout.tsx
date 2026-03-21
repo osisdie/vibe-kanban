@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import Logo from './Logo';
 import UserAvatar from './UserAvatar';
+import UnverifiedBanner from './UnverifiedBanner';
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -104,6 +105,7 @@ export default function Layout() {
           </div>
         )}
       </nav>
+      {user && !user.email_verified && <UnverifiedBanner />}
       <main className="min-h-[calc(100vh-108px)]">
         <Outlet />
       </main>

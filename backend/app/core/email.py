@@ -88,6 +88,37 @@ async def send_password_reset_email(to: str, reset_token: str) -> bool:
     return await send_email(to, "Reset Your Password — vibe-kanban", html)
 
 
+async def send_verification_email(to: str, display_name: str, code: str, verify_token: str) -> bool:
+    settings = get_settings()
+    verify_url = f"{settings.FRONTEND_URL}/verify-email?token={verify_token}"
+    html = f"""
+    <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+        <h2 style="color: #1e40af;">Verify Your Email</h2>
+        <p>Hi {display_name},</p>
+        <p>Your verification code is:</p>
+        <div style="text-align: center; margin: 24px 0;">
+            <span style="font-family: monospace; font-size: 32px; font-weight: 700;
+                         letter-spacing: 6px; color: #1e40af; background: #eff6ff;
+                         padding: 12px 24px; border-radius: 8px; display: inline-block;">
+                {code}
+            </span>
+        </div>
+        <p>Enter this code on the verification page, or click the button below:</p>
+        <a href="{verify_url}"
+           style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white;
+                  text-decoration: none; border-radius: 6px; font-weight: 600; margin: 16px 0;">
+            Verify Email
+        </a>
+        <p style="color: #6b7280; font-size: 14px;">
+            This code expires in 24 hours. If you didn't create an account, you can safely ignore this email.
+        </p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="color: #9ca3af; font-size: 12px;">vibe-kanban &mdash; Ticket Tracker</p>
+    </div>
+    """
+    return await send_email(to, f"Your verification code is {code} — vibe-kanban", html)
+
+
 async def send_welcome_email(to: str, display_name: str) -> bool:
     settings = get_settings()
     login_url = f"{settings.FRONTEND_URL}/login"

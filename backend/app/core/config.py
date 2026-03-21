@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_GOOGLE_AUTH: str = "10/minute"
     RATE_LIMIT_EXTERNAL: str = "60/minute"
     RATE_LIMIT_ADMIN: str = "30/minute"
+    RATE_LIMIT_RESEND_VERIFICATION: str = "3/hour"
 
     class Config:
         env_file = ".env"

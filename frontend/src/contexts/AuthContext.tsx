@@ -9,6 +9,8 @@ interface AuthContextType {
   register: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
   setToken: (token: string) => void;
+  verifyEmail: (code?: string, token?: string) => Promise<void>;
+  resendVerification: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>(null!);
@@ -62,8 +64,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const verifyEmail = async (code?: string, token?: string) => {
+    await client.post('/auth/verify-email', { code, token });
+    await fetchUser();
+  };
+
+  const resendVerification = async () => {
+    await client.post('/auth/resend-verification');
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, setToken }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, setToken, verifyEmail, resendVerification }}>
       {children}
     </AuthContext.Provider>
   );

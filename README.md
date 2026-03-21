@@ -59,10 +59,11 @@ Super admin view with platform-wide stats, user suspend/unsuspend, and project r
 
 - **5-Column Kanban** — TODO, Doing, Pending Confirming, Testing, Done
 - **Dual Auth** — Email/password registration + Google OAuth
+- **Email Verification** — 6-digit code + click-to-verify link; unverified users limited to 1 project (trial)
 - **Forgot & Reset Password** — Email-based password reset (Resend or SMTP)
-- **Welcome Email** — Sent on new user registration (email and Google OAuth)
+- **Welcome Email** — Sent on new user registration (Google OAuth auto-verified)
 - **Change Password** — Self-service password change in profile with last-updated timestamp
-- **API Keys** — Up to 10 projects per account, each with 1000 API actions
+- **API Keys** — Up to 10 projects per verified account (1 for unverified), each with 1000 API actions
 - **Project Descriptions** — Optional description field per project
 - **API Key Actions** — Revoke, regenerate, and edit API keys (both user and admin)
 - **External Agent API** — `X-API-Key` authenticated endpoints for agents to create, move, and comment on tickets
@@ -130,6 +131,7 @@ erDiagram
         string avatar_url
         string role "user|super_admin"
         bool is_active
+        bool email_verified
         datetime password_changed_at
         datetime created_at
     }
@@ -448,6 +450,3 @@ pip install pre-commit && pre-commit install
 
 MIT
 
----
-
-Maintained by [Kevin Wu](https://github.com/osisdie) · &copy; 2026

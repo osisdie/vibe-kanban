@@ -26,8 +26,14 @@ async def create_api_key(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(ApiKey).where(ApiKey.user_id == user.id))
-    if len(result.scalars().all()) >= 10:
-        raise HTTPException(status_code=400, detail="Maximum 10 API keys per account")
+    max_keys = 10 if user.email_verified else 1
+    if len(result.scalars().all()) >= max_keys:
+        detail = (
+            "Maximum 10 API keys per account"
+            if user.email_verified
+            else "Unverified accounts are limited to 1 project. Please verify your email."
+        )
+        raise HTTPException(status_code=400, detail=detail)
     api_key = ApiKey(user_id=user.id, name=req.name, description=req.description)
     db.add(api_key)
     await db.flush()
