@@ -3,6 +3,7 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
+    APP_VERSION: str = "dev"
     DATABASE_URL: str = "sqlite+aiosqlite:///./vibe_kanban.db"
     JWT_SECRET_KEY: str = "change-me-to-a-random-secret"
     JWT_ALGORITHM: str = "HS256"

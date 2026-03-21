@@ -42,6 +42,11 @@ export default function TicketCard({ ticket, index, onClick }: Props) {
             >
               {ticket.priority}
             </span>
+            {ticket.tag && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                {ticket.tag}
+              </span>
+            )}
             {ticket.external_ref && (
               <span className="text-xs text-gray-400 truncate max-w-[100px]">
                 {ticket.external_ref}

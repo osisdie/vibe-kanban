@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="vibe-kanban", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="vibe-kanban", version=settings.APP_VERSION, lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 

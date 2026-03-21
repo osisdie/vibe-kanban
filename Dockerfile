@@ -23,6 +23,8 @@ COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 # In production, env vars are injected by the platform (Railway/Docker Compose).
 # .env.example is not copied — it is only a reference for local development.
 
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8004
 
