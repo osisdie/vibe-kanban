@@ -12,6 +12,7 @@ import SettingsPage from './pages/SettingsPage';
 import BoardPage from './pages/BoardPage';
 import AdminPage from './pages/AdminPage';
 import ProfilePage from './pages/ProfilePage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 
 export default function App() {
   return (
@@ -24,6 +25,14 @@ export default function App() {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route
+                path="/verify-email"
+                element={
+                  <ProtectedRoute>
+                    <VerifyEmailPage />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/settings"
                 element={

@@ -25,6 +25,7 @@ class UserOut(BaseModel):
     avatar_url: str | None = None
     role: str = "user"
     is_active: bool = True
+    email_verified: bool = False
     password_changed_at: datetime | None = None
     created_at: datetime | None = None
 
@@ -47,3 +48,8 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
+
+class VerifyEmailRequest(BaseModel):
+    code: str | None = None
+    token: str | None = None
