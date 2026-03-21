@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -15,9 +15,12 @@ from app.core.security import (
     create_access_token,
     create_reset_token,
     decode_reset_token,
+    generate_verification_code,
+    create_verification_token,
+    decode_verification_token,
     get_current_user,
 )
-from app.core.email import send_password_reset_email, send_welcome_email
+from app.core.email import send_password_reset_email, send_verification_email, send_welcome_email
 from app.models.user import User
 from app.schemas.auth import (
     RegisterRequest,
@@ -28,6 +31,7 @@ from app.schemas.auth import (
     ChangePasswordRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    VerifyEmailRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -42,15 +46,21 @@ async def register(request: Request, req: RegisterRequest, db: AsyncSession = De
         raise HTTPException(status_code=400, detail="Email already registered")
     user_count = await db.scalar(select(func.count()).select_from(User))
     role = "super_admin" if user_count == 0 else "user"
+    code = generate_verification_code()
+    code_expires = datetime.now(timezone.utc) + timedelta(hours=24)
     user = User(
         email=req.email,
         hashed_password=hash_password(req.password),
         display_name=req.display_name,
         role=role,
+        email_verified=False,
+        verification_code=code,
+        verification_code_expires_at=code_expires,
     )
     db.add(user)
     await db.flush()
-    await send_welcome_email(user.email, user.display_name)
+    token = create_verification_token(user.id)
+    await send_verification_email(user.email, user.display_name, code, token)
     return TokenResponse(access_token=create_access_token(user.id))
 
 
@@ -184,6 +194,7 @@ async def google_callback(request: Request, code: str, db: AsyncSession = Depend
         if user:
             user.google_id = userinfo["sub"]
             user.avatar_url = userinfo.get("picture")
+            user.email_verified = True
         else:
             user_count = await db.scalar(select(func.count()).select_from(User))
             role = "super_admin" if user_count == 0 else "user"
@@ -193,6 +204,7 @@ async def google_callback(request: Request, code: str, db: AsyncSession = Depend
                 google_id=userinfo["sub"],
                 avatar_url=userinfo.get("picture"),
                 role=role,
+                email_verified=True,
             )
             db.add(user)
             await db.flush()
@@ -200,3 +212,57 @@ async def google_callback(request: Request, code: str, db: AsyncSession = Depend
     await db.flush()
     jwt_token = create_access_token(user.id)
     return RedirectResponse(f"{settings.FRONTEND_URL}/login?token={jwt_token}")
+
+
+@router.post("/verify-email")
+@limiter.limit(settings.RATE_LIMIT_RESET_PASSWORD)
+async def verify_email(
+    request: Request,
+    req: VerifyEmailRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if user.email_verified:
+        return {"detail": "Email already verified"}
+    if req.token:
+        token_user_id = decode_verification_token(req.token)
+        if token_user_id != user.id:
+            raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+        user.email_verified = True
+        user.verification_code = None
+        user.verification_code_expires_at = None
+        db.add(user)
+        return {"detail": "Email verified successfully"}
+    if req.code:
+        if (
+            not user.verification_code
+            or user.verification_code != req.code
+            or not user.verification_code_expires_at
+            or user.verification_code_expires_at < datetime.now(timezone.utc)
+        ):
+            raise HTTPException(status_code=400, detail="Invalid or expired verification code")
+        user.email_verified = True
+        user.verification_code = None
+        user.verification_code_expires_at = None
+        db.add(user)
+        return {"detail": "Email verified successfully"}
+    raise HTTPException(status_code=400, detail="Provide either a code or token")
+
+
+@router.post("/resend-verification")
+@limiter.limit(settings.RATE_LIMIT_RESEND_VERIFICATION)
+async def resend_verification(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if user.email_verified:
+        return {"detail": "Email already verified"}
+    code = generate_verification_code()
+    user.verification_code = code
+    user.verification_code_expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+    db.add(user)
+    await db.flush()
+    token = create_verification_token(user.id)
+    await send_verification_email(user.email, user.display_name, code, token)
+    return {"detail": "Verification email sent"}

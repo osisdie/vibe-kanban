@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -49,6 +50,29 @@ def decode_reset_token(token: str) -> int | None:
     try:
         payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         if payload.get("purpose") != "reset":
+            return None
+        return int(payload["sub"])
+    except (JWTError, KeyError, ValueError):
+        return None
+
+
+def generate_verification_code() -> str:
+    return str(secrets.randbelow(900000) + 100000)
+
+
+def create_verification_token(user_id: int) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(hours=24)
+    return jwt.encode(
+        {"sub": str(user_id), "purpose": "verify", "exp": expire},
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+
+
+def decode_verification_token(token: str) -> int | None:
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        if payload.get("purpose") != "verify":
             return None
         return int(payload["sub"])
     except (JWTError, KeyError, ValueError):

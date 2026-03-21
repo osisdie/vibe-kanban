@@ -5,6 +5,7 @@ export interface User {
   avatar_url?: string;
   role: string;
   is_active: boolean;
+  email_verified: boolean;
   password_changed_at?: string;
   created_at?: string;
 }
