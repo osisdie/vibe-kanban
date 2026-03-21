@@ -71,6 +71,7 @@ async def create_ticket(
         status=req.status,
         priority=req.priority,
         external_ref=req.external_ref,
+        tag=req.tag,
         order=max_order.scalar() + 1,
     )
     db.add(ticket)

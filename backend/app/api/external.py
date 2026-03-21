@@ -53,8 +53,8 @@ async def create_ticket(
     db: AsyncSession = Depends(get_db),
 ):
     await increment_usage(api_key, db)
-    max_order = await db.execute(
-        select(func.coalesce(func.max(Ticket.order), -1)).where(
+    min_order = await db.execute(
+        select(func.coalesce(func.min(Ticket.order), 1)).where(
             Ticket.api_key_id == api_key.id, Ticket.status == req.status
         )
     )
@@ -65,7 +65,8 @@ async def create_ticket(
         status=req.status,
         priority=req.priority,
         external_ref=req.external_ref,
-        order=max_order.scalar() + 1,
+        tag=req.tag,
+        order=min_order.scalar() - 1,
     )
     db.add(ticket)
     await db.flush()

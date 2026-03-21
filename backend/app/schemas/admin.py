@@ -15,6 +15,8 @@ class AdminUserOut(BaseModel):
     display_name: str
     role: str
     is_active: bool
+    email_verified: bool
+    login_channel: str
     created_at: datetime
     project_count: int
     ticket_count: int

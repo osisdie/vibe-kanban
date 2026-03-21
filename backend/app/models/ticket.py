@@ -30,6 +30,7 @@ class Ticket(Base):
     priority: Mapped[str] = mapped_column(String(20), default=TicketPriority.MEDIUM)
     order: Mapped[int] = mapped_column(Integer, default=0)
     external_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    tag: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

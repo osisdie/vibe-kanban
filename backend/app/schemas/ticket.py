@@ -9,6 +9,7 @@ class TicketCreate(BaseModel):
     status: TicketStatus = TicketStatus.TODO
     priority: TicketPriority = TicketPriority.MEDIUM
     external_ref: str | None = None
+    tag: str | None = None
 
 
 class TicketUpdate(BaseModel):
@@ -16,6 +17,7 @@ class TicketUpdate(BaseModel):
     description: str | None = None
     priority: TicketPriority | None = None
     external_ref: str | None = None
+    tag: str | None = None
 
 
 class TicketMove(BaseModel):
@@ -42,6 +44,7 @@ class TicketOut(BaseModel):
     priority: str
     order: int
     external_ref: str | None = None
+    tag: str | None = None
     created_at: datetime
     updated_at: datetime
     comments: list[CommentOut] = []
@@ -56,6 +59,7 @@ class TicketBrief(BaseModel):
     priority: str
     order: int
     external_ref: str | None = None
+    tag: str | None = None
     created_at: datetime
     updated_at: datetime
 

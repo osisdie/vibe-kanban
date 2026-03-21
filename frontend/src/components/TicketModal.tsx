@@ -16,6 +16,7 @@ export default function TicketModal({ ticketId, apiKeyId, onClose, onSaved, crea
   const [priority, setPriority] = useState<TicketPriority>('medium');
   const [status, setStatus] = useState<TicketStatus>(createInStatus || 'todo');
   const [comments, setComments] = useState<Comment[]>([]);
+  const [tag, setTag] = useState('');
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -23,11 +24,12 @@ export default function TicketModal({ ticketId, apiKeyId, onClose, onSaved, crea
 
   useEffect(() => {
     if (isEdit) {
-      client.get(`/tickets/${ticketId}`).then(({ data }: { data: { title: string; description: string; priority: TicketPriority; status: TicketStatus; comments: Comment[] } }) => {
+      client.get(`/tickets/${ticketId}`).then(({ data }: { data: { title: string; description: string; priority: TicketPriority; status: TicketStatus; tag?: string; comments: Comment[] } }) => {
         setTitle(data.title);
         setDescription(data.description || '');
         setPriority(data.priority);
         setStatus(data.status);
+        setTag(data.tag || '');
         setComments(data.comments || []);
       });
     }
@@ -38,13 +40,14 @@ export default function TicketModal({ ticketId, apiKeyId, onClose, onSaved, crea
     setLoading(true);
     try {
       if (isEdit) {
-        await client.put(`/tickets/${ticketId}`, { title, description, priority });
+        await client.put(`/tickets/${ticketId}`, { title, description, priority, tag: tag || undefined });
       } else {
         await client.post(`/api-keys/${apiKeyId}/tickets`, {
           title,
           description: description || undefined,
           priority,
           status,
+          tag: tag || undefined,
         });
       }
       onSaved();
@@ -126,6 +129,16 @@ export default function TicketModal({ ticketId, apiKeyId, onClose, onSaved, crea
                   </select>
                 </div>
               )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tag</label>
+              <input
+                type="text"
+                value={tag}
+                onChange={(e) => setTag(e.target.value)}
+                placeholder="e.g. v0.6.0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
             <button
               type="submit"
